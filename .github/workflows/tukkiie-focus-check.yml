@@ -10,6 +10,9 @@ on:
       - "crates/bongocat-plugin-manager/**"
       - "crates/bongocat-plugin-service/**"
       - "crates/bongocat-app/**"
+      - "crates/bongocat-runtime/**"
+      - "crates/bongocat-live2d-playback/**"
+      - "resources/models/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/tukkiie-focus-check.yml"
@@ -19,6 +22,9 @@ on:
     paths:
       - "plugins/pomodoro/**"
       - "crates/bongocat-plugin-sdk/**"
+      - "crates/bongocat-runtime/**"
+      - "crates/bongocat-live2d-playback/**"
+      - "resources/models/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/tukkiie-focus-check.yml"
@@ -33,7 +39,7 @@ concurrency:
 
 jobs:
   test:
-    name: Format and test focus plugin
+    name: Format and test Tukkiiie study features
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -50,5 +56,5 @@ jobs:
       - name: Format Rust code
         run: cargo fmt --all
 
-      - name: Test focus plugin
-        run: cargo test -p bongocat-plugin-sdk -p bongocat-pomodoro
+      - name: Test plugin, runtime and study motion
+        run: cargo test -p bongocat-plugin-sdk -p bongocat-pomodoro -p bongocat-live2d-playback -p bongocat-runtime
