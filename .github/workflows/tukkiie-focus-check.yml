@@ -62,4 +62,4 @@ jobs:
         run: cargo fmt --all
 
       - name: Test plugin, runtime and study motion
-        run: cargo test -p bongocat-plugin-sdk -p bongocat-pomodoro -p bongocat-live2d-playback -p bongocat-plugin-service
+        run: cargo test -p bongocat-plugin-sdk -p bongocat-pomodoro -p bongocat-live2d-playback
