@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn study_completion_starts_a_break_and_records_the_session() {
         let mut p = Pomodoro { minutes: 1, break_minutes: 5, ..Default::default() };
-        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 60_000);
+        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0); tick(&mut p, 60_000);
         assert_eq!(p.phase, Phase::Break);
         assert!(p.running);
         assert_eq!(p.remaining_ms, 5 * 60_000);
@@ -320,18 +320,18 @@ mod tests {
     #[test]
     fn pause_does_not_count_time_and_resume_keeps_the_remaining_time() {
         let mut p = Pomodoro { minutes: 1, ..Default::default() };
-        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 10_000);
+        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0); tick(&mut p, 10_000);
         p.handle(HostMessage::Pause).unwrap(); tick(&mut p, 40_000);
         assert_eq!(p.remaining_ms, 50_000);
         p.handle(HostMessage::Resume).unwrap();
-        tick(&mut p, 50_000); tick(&mut p, 60_000);
+        tick(&mut p, 50_000); tick(&mut p, 60_000); tick(&mut p, 70_000);
         assert_eq!(p.phase, Phase::Break);
     }
 
     #[test]
     fn finishing_early_records_only_the_actual_study_time() {
         let mut p = Pomodoro { minutes: 25, ..Default::default() };
-        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 12_000);
+        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0); tick(&mut p, 12_000);
         action(&mut p, "finish_early");
         assert_eq!(p.sessions.len(), 1);
         assert!(!p.sessions[0].completed);
