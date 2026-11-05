@@ -50,6 +50,11 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Install Linux audio build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pkg-config libasound2-dev
+
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
