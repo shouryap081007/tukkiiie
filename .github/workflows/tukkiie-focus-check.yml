@@ -48,4 +48,4 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Test focus plugin
-        run: cargo test --locked -p bongocat-pomodoro
+        run: cargo test -p bongocat-pomodoro
