@@ -1,4 +1,47 @@
 use super::*;
+
+#[test]
+fn model_behavior_events_are_bounded_and_backward_compatible() {
+    let event = PluginModelEvent::StartMotion {
+        group: "CAT_motion".into(),
+        index: 1,
+    };
+    let output = PluginOutput {
+        model_events: vec![event.clone()],
+        ..Default::default()
+    };
+    assert!(output.validate());
+    let encoded = serde_json::to_vec(&output).unwrap();
+    let decoded: PluginOutput = serde_json::from_slice(&encoded).unwrap();
+    assert_eq!(decoded.model_events, vec![event]);
+
+    // Outputs produced before model events were added still decode.
+    let old = br#"{"model":{"anchor":"top_right","nodes":[]},"settings":{"anchor":"top_right","nodes":[]},"config":{},"state":[],"errors":[]}"#;
+    assert!(serde_json::from_slice::<PluginOutput>(old).unwrap().validate());
+
+    assert!(!PluginOutput {
+        model_events: vec![PluginModelEvent::StartMotion {
+            group: " ".into(),
+            index: 0,
+        }],
+        ..Default::default()
+    }.validate());
+    assert!(!PluginOutput {
+        model_events: vec![PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(),
+            index: 256,
+        }],
+        ..Default::default()
+    }.validate());
+    assert!(!PluginOutput {
+        model_events: vec![PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(),
+            index: 0,
+        }; 9],
+        ..Default::default()
+    }.validate());
+}
+
 #[test]
 fn plugin_errors_are_bounded_and_reject_internal_formatting() {
     let valid = PluginOutput {
