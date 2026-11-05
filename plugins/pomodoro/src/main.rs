@@ -1,6 +1,6 @@
 //! Local-first study and break timer, kept outside the Live2D and input paths.
 #![forbid(unsafe_code)]
-use bongocat_plugin_sdk::{ActionIcon, Anchor, ConfigValue, Configuration, HostMessage, Plugin, PluginOutput, PluginView, UiNode};
+use bongocat_plugin_sdk::{ActionIcon, Anchor, ConfigValue, Configuration, HostMessage, Plugin, PluginModelEvent, PluginOutput, PluginView, UiNode};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
