@@ -5,6 +5,7 @@ fn model_behavior_events_are_bounded_and_backward_compatible() {
     let event = PluginModelEvent::StartMotion {
         group: "CAT_motion".into(),
         index: 1,
+        looping: true,
     };
     let output = PluginOutput {
         model_events: vec![event.clone()],
@@ -23,6 +24,7 @@ fn model_behavior_events_are_bounded_and_backward_compatible() {
         model_events: vec![PluginModelEvent::StartMotion {
             group: " ".into(),
             index: 0,
+            looping: true,
         }],
         ..Default::default()
     }.validate());
@@ -30,6 +32,7 @@ fn model_behavior_events_are_bounded_and_backward_compatible() {
         model_events: vec![PluginModelEvent::StartMotion {
             group: "CAT_motion".into(),
             index: 256,
+            looping: true,
         }],
         ..Default::default()
     }.validate());
@@ -37,7 +40,15 @@ fn model_behavior_events_are_bounded_and_backward_compatible() {
         model_events: vec![PluginModelEvent::StartMotion {
             group: "CAT_motion".into(),
             index: 0,
+            looping: true,
         }; 9],
+        ..Default::default()
+    }.validate());
+    assert!(PluginOutput {
+        model_events: vec![PluginModelEvent::StopMotion {
+            group: "Tukkiiie_Study".into(),
+            index: 0,
+        }],
         ..Default::default()
     }.validate());
 }
