@@ -1165,7 +1165,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn focus_hud_keeps_only_the_book_while_center_retains_timer_controls() {
+    fn focus_hud_keeps_the_book_and_bubble_while_center_retains_timer_controls() {
         let full_view = bongocat_plugin_sdk::PluginView {
             anchor: bongocat_plugin_sdk::Anchor::TopRight,
             nodes: vec![
@@ -1173,6 +1173,10 @@ mod tests {
                 UiNode::IconText {
                     icon: bongocat_plugin_sdk::StatusIcon::Badge("B".into()),
                     text: "Studying".into(),
+                },
+                UiNode::IconText {
+                    icon: bongocat_plugin_sdk::StatusIcon::Badge("...".into()),
+                    text: "Back to work, professional procrastinator.".into(),
                 },
                 UiNode::Button {
                     id: "toggle".into(),
@@ -1184,16 +1188,19 @@ mod tests {
         };
         let hud_view = overlay_model_view("com.bongocat.pomodoro", full_view.clone())
             .expect("active study book remains visible");
-        assert_eq!(hud_view.nodes.len(), 1);
-        assert!(matches!(hud_view.nodes[0], UiNode::IconText { .. }));
+        assert_eq!(hud_view.nodes.len(), 2);
+        assert!(hud_view.nodes.iter().all(|node| matches!(node, UiNode::IconText { .. })));
+        assert!(hud_view.nodes.iter().any(|node| matches!(
+            node, UiNode::IconText { icon: bongocat_plugin_sdk::StatusIcon::Badge(label), .. } if label == "..."
+        )));
         // Filtering is applied to a clone: Plugin Center still sees the full
         // timer actions from the manager's original PluginOutput.
-        assert_eq!(full_view.nodes.len(), 3);
+        assert_eq!(full_view.nodes.len(), 4);
         assert!(full_view.nodes.iter().any(|node| matches!(node, UiNode::Button { id, .. } if id == "toggle")));
     }
 
     #[test]
-    fn focus_hud_is_hidden_without_the_active_study_book() {
+    fn focus_hud_is_hidden_without_an_active_book_or_message() {
         let paused_view = bongocat_plugin_sdk::PluginView {
             anchor: bongocat_plugin_sdk::Anchor::TopRight,
             nodes: vec![
