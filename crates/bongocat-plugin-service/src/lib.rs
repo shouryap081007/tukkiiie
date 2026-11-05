@@ -60,4 +60,4 @@ pub trait PluginInputEvents: Send {
     fn drain(&mut self) -> (Vec<bongocat_plugin_sdk::PluginInputEvent>, u64);
 }
 
-pub use bongocat_plugin_sdk::{InputEventControl, PluginInputEvent};
+pub use bongocat_plugin_sdk::{InputEventControl, PluginInputEvent, PluginModelEvent};
