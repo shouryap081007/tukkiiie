@@ -502,7 +502,7 @@ mod tests {
         ]);
         assert_eq!(p.phase, Phase::Break);
         assert!(p.running);
-        assert!(!output.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { .. })));
+        assert!(!output.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { icon: StatusIcon::Rgba(_), .. })));
         assert_eq!(p.remaining_ms, 5 * 60_000);
         assert_eq!(p.sessions.len(), 1);
         assert!(p.sessions[0].completed);
@@ -518,7 +518,7 @@ mod tests {
             group: "CAT_motion".into(), index: 1, looping: false,
         }]);
         assert_eq!(p.phase, Phase::Study);
-        assert!(!output.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { .. })));
+        assert!(!output.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { icon: StatusIcon::Rgba(_), .. })));
         assert!(!p.running);
         assert!(!p.started);
         assert_eq!(p.remaining_ms, 25 * 60_000);
@@ -543,7 +543,12 @@ mod tests {
         assert_eq!(pause.model_events, vec![PluginModelEvent::StopMotion {
             group: "Tukkiiie_Study".into(), index: 0,
         }]);
-        assert!(!pause.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { .. })));
+        assert!(!pause.model.nodes.iter().any(|node| matches!(
+            node, UiNode::IconText { icon: StatusIcon::Rgba(_), .. }
+        )));
+        assert!(pause.model.nodes.iter().any(|node| matches!(
+            node, UiNode::IconText { icon: StatusIcon::Badge(_), .. }
+        )));
         assert!(!p.running);
     }
 
