@@ -48,6 +48,13 @@
           "FadeInTime": 0,
           "FadeOutTime": 0
         }
+      ],
+      "Tukkiiie_Study": [
+        {
+          "File": "tukkiiie_study.motion3.json",
+          "FadeInTime": 0.6,
+          "FadeOutTime": 0.5
+        }
       ]
     }
   },
