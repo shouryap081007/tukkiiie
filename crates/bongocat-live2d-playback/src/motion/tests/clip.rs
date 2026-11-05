@@ -143,3 +143,31 @@ fn one_shot_terminal_evaluation_keeps_natural_fade_weights() {
         "completion freezes the fully evaluated duration sample, including its natural fade"
     );
 }
+
+#[test]
+fn bundled_tukkiiie_study_motion_is_a_looping_downward_gaze() {
+    let clip = MotionClip::from_slice(
+        include_bytes!("../../../../../resources/models/standard/tukkiiie_study.motion3.json"),
+        0.6,
+        0.5,
+    )
+    .expect("bundled Tukkiiie study motion");
+
+    assert!(clip.is_looping());
+    assert_eq!(clip.duration(), Duration::from_secs(8));
+    let gaze = clip.evaluate(Duration::from_secs(2));
+    let eye_y = gaze
+        .parameters
+        .iter()
+        .find(|parameter| parameter.id == "ParamEyeBallY")
+        .expect("study motion controls eye gaze");
+    assert!((eye_y.value - (-0.30)).abs() < 0.001);
+    let wrapped = clip.evaluate(Duration::from_secs(10));
+    let initial = clip.evaluate(Duration::from_secs(2));
+    let wrapped_eye_y = wrapped
+        .parameters
+        .iter()
+        .find(|parameter| parameter.id == "ParamEyeBallY")
+        .expect("looped study motion keeps eye gaze");
+    assert!((wrapped_eye_y.value - initial.parameters[1].value).abs() < 0.001);
+}
