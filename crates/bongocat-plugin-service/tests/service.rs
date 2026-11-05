@@ -105,7 +105,7 @@ fn a_plugin_without_chinese_copy_reads_english_on_its_card_and_controls() {
     assert!(card.localizations.is_empty());
     assert_eq!(
         card.copy("zh-CN"),
-        ( study timer with 
+        (
             "Tukkiiie Focus",
             "A local-first study timer with automatic breaks and daily study summaries."
         )
