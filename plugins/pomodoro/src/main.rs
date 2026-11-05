@@ -632,4 +632,76 @@ mod tests {
         assert_eq!(output.settings.nodes.len(), 2);
         assert!(output.model.nodes.iter().any(|node| matches!(node, UiNode::Text { text } if text.contains("Today"))));
     }
+
+    #[test]
+    fn study_start_bubble_is_playful_and_expires_after_four_seconds() {
+        let mut p = Pomodoro::default();
+        let start = action(&mut p, "toggle");
+        assert!(start.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Badge(badge), text }
+                if badge == "..." && text == ENGLISH.bubble_study_started
+        )));
+        tick(&mut p, 0);
+        let expired = tick(&mut p, 4_000);
+        assert!(!expired.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Badge(_), .. }
+        )));
+    }
+
+    #[test]
+    fn pause_keeps_the_book_hidden_but_shows_the_roast_bubble_briefly() {
+        let mut p = Pomodoro::default();
+        action(&mut p, "toggle");
+        let paused = action(&mut p, "toggle");
+        assert!(paused.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Badge(badge), text }
+                if badge == "..." && text == ENGLISH.bubble_paused
+        )));
+        assert!(!paused.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Rgba(_), .. }
+        )));
+    }
+
+    #[test]
+    fn midpoint_bubble_appears_once_when_half_the_study_time_is_left() {
+        let mut p = Pomodoro { minutes: 2, ..Default::default() };
+        tick(&mut p, 0);
+        action(&mut p, "toggle");
+        tick(&mut p, 0);
+        let halfway = tick(&mut p, 60_000);
+        assert!(halfway.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Badge(badge), text }
+                if badge == "..." && text == ENGLISH.bubble_mid_study
+        )));
+    }
+
+    #[test]
+    fn study_and_break_completion_publish_their_own_bubble_messages() {
+        let mut study = Pomodoro { minutes: 1, ..Default::default() };
+        tick(&mut study, 0);
+        action(&mut study, "toggle");
+        tick(&mut study, 0);
+        let completed = tick(&mut study, 60_000);
+        assert!(completed.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Badge(_), text }
+                if text == ENGLISH.bubble_study_complete
+        )));
+
+        let mut rest = Pomodoro {
+            phase: Phase::Break, remaining_ms: 5_000, running: true,
+            started: true, last_tick: Some(0), ..Default::default()
+        };
+        let resumed = tick(&mut rest, 5_000);
+        assert!(resumed.model.nodes.iter().any(|node| matches!(
+            node,
+            UiNode::IconText { icon: StatusIcon::Badge(_), text }
+                if text == ENGLISH.bubble_break_complete
+        )));
+    }
 }
