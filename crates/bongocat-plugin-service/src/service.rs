@@ -856,7 +856,7 @@ impl Worker {
                 action,
                 reply,
             } => {
-                let result = match self.manager.action_plugin(&plugin, &action) {
+                let result = match self.manager.action_plugin_with_output(&plugin, &action) {
                     Ok(output) => {
                         self.dispatch_plugin_model_events(&plugin, output);
                         Ok(())
