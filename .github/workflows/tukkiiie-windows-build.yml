@@ -1,0 +1,69 @@
+name: Tukkiiie Windows development build
+
+on:
+  push:
+    branches:
+      - tukkiiie-dev
+    paths:
+      - "crates/**"
+      - "plugins/**"
+      - "resources/**"
+      - "shared/**"
+      - "tools/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "justfile"
+      - "rust-toolchain.toml"
+      - ".github/workflows/tukkiiie-windows-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tukkiiie-windows-development-build
+  cancel-in-progress: true
+
+jobs:
+  windows-x64:
+    name: Build Windows x64 installer
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install the pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Just
+        uses: taiki-e/install-action@just
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-x64-development
+
+      - name: Build unsigned development installer
+        run: just build --environment development --formats nsis
+
+      - name: Verify installer exists
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem -Path "target/package" -Filter "*.exe" -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one installer, found $($installers.Count)"
+          }
+          if ($installers[0].Length -le 0) {
+            throw "Installer is empty"
+          }
+          Write-Host "Built $($installers[0].Name) ($($installers[0].Length) bytes)"
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: tukkiiie-windows-x64-development
+          path: target/package/*.exe
+          if-no-files-found: error
+          retention-days: 7
