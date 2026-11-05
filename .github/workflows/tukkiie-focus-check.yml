@@ -1,0 +1,51 @@
+name: Tukkiiie focus plugin checks
+
+on:
+  push:
+    branches:
+      - tukkiiie-dev
+    paths:
+      - "plugins/pomodoro/**"
+      - "crates/bongocat-plugin-sdk/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/tukkiiie-focus-check.yml"
+  pull_request:
+    branches:
+      - tukkiiie-dev
+    paths:
+      - "plugins/pomodoro/**"
+      - "crates/bongocat-plugin-sdk/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/tukkiiie-focus-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tukkiiie-focus-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Format and test focus plugin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Test focus plugin
+        run: cargo test --locked -p bongocat-pomodoro
