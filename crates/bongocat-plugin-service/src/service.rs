@@ -109,6 +109,24 @@ impl PluginService {
         Self::start_with_inputs(storage_root, capacity, source, None, Some(events), None)
     }
 
+    /// Start with a callback for one-shot model reactions published by plugins.
+    pub fn start_with_model_events(
+        storage_root: &Path,
+        capacity: usize,
+        source: PluginSource,
+        events: Box<dyn crate::PluginInputEvents>,
+        model_events: Box<dyn Fn(&str, PluginModelEvent) + Send>,
+    ) -> Result<(Self, PluginOverlayHandles), PluginServiceStartError> {
+        Self::start_with_inputs(
+            storage_root,
+            capacity,
+            source,
+            None,
+            Some(events),
+            Some(model_events),
+        )
+    }
+
     fn start_with_inputs(
         storage_root: &Path,
         capacity: usize,
