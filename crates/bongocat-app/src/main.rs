@@ -58,7 +58,10 @@ use bongocat_platform::{
     SingleInstance, SingleInstanceAction, SingleInstanceEnvironment, SingleInstanceStart,
 };
 use bongocat_platform::{SystemMenu, SystemMenuAction, SystemMenuPresentation};
-use bongocat_runtime::{hover_hide_delay_ms, idle_hide_delay_ms};
+use bongocat_runtime::{
+    MotionId, MotionPriority, RuntimeCommand, RuntimeClient, hover_hide_delay_ms,
+    idle_hide_delay_ms,
+};
 use bongocat_ui::{
     SettingsNavigationMemory, SettingsView, SettingsWindowHandle, SettingsWindowSeed,
     open_settings_window,
@@ -295,6 +298,28 @@ fn build_single_instance_environment() -> SingleInstanceEnvironment {
     }
 }
 
+fn handle_plugin_model_event(
+    runtime: &RuntimeClient,
+    plugin_id: &str,
+    event: bongocat_plugin_service::PluginModelEvent,
+) {
+    // Only Tukkiiie Focus is authorized to request these host-side reactions.
+    if plugin_id != "com.bongocat.pomodoro" {
+        return;
+    }
+    match event {
+        bongocat_plugin_service::PluginModelEvent::StartMotion { group, index } => {
+            let Ok(motion) = MotionId::new(group, index) else {
+                return;
+            };
+            let _ = runtime.send(RuntimeCommand::StartMotion {
+                motion,
+                priority: MotionPriority::Normal,
+            });
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let run_options = match RunOptions::parse(env::args().skip(1)) {
         Ok(options) => options,
@@ -362,12 +387,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // fatal — the plugin center reports it and the cat still runs.
     let plugin_storage_root = application.storage_root().to_path_buf();
     let activity = application.runtime_client().subscribe_activity();
+    let plugin_runtime = application.runtime_client();
     let (plugin_service, plugin_overlay_handles) =
-        match bongocat_plugin_service::PluginService::start_with_events(
+        match bongocat_plugin_service::PluginService::start_with_model_events(
             &plugin_storage_root,
             16,
             dev_plugins::source(),
             Box::new(plugin_input::PluginActivity(activity)),
+            Box::new(move |plugin_id, event| {
+                handle_plugin_model_event(&plugin_runtime, plugin_id, event);
+            }),
         ) {
             Ok(started) => (Some(started.0), Some(started.1)),
             Err(error) => {
