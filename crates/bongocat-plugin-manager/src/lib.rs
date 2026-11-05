@@ -5,7 +5,7 @@ mod icons;
 mod loader;
 mod registry;
 mod source;
-use bongocat_plugin_sdk::PluginMetadata;
+use bongocat_plugin_sdk::{PluginMetadata, PluginOutput};
 pub use catalog::{CATALOG_NAME, Catalog, CatalogEntry, CatalogError, parse_catalog, sha256_of};
 pub use registry::{PluginRegistry, PluginState, RegistryError};
 use serde::{Deserialize, Serialize};
@@ -296,11 +296,12 @@ impl PluginManager {
     pub fn disable_plugin(&mut self, id: &str) -> Result<(), PluginManagerError> {
         self.registry.disable(id).map_err(Into::into)
     }
-    pub fn action_plugin(&mut self, id: &str, action: &str) -> Result<(), PluginManagerError> {
-        self.registry
-            .action(id, action)
-            .map(|_| ())
-            .map_err(Into::into)
+    pub fn action_plugin(
+        &mut self,
+        id: &str,
+        action: &str,
+    ) -> Result<PluginOutput, PluginManagerError> {
+        self.registry.action(id, action).map_err(Into::into)
     }
     pub fn preview_plugin(
         &mut self,
