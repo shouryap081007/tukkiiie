@@ -129,19 +129,25 @@ pub enum PluginModelEvent {
     StartMotion {
         group: String,
         index: usize,
+        #[serde(default)]
+        looping: bool,
+    },
+    StopMotion {
+        group: String,
+        index: usize,
     },
 }
 
 impl PluginModelEvent {
     pub fn validate(&self) -> bool {
-        match self {
-            Self::StartMotion { group, index } => {
-                !group.trim().is_empty()
-                    && group.len() <= 128
-                    && !group.chars().any(char::is_control)
-                    && *index <= 255
-            }
-        }
+        let (group, index) = match self {
+            Self::StartMotion { group, index, .. }
+            | Self::StopMotion { group, index } => (group, index),
+        };
+        !group.trim().is_empty()
+            && group.len() <= 128
+            && !group.chars().any(char::is_control)
+            && *index <= 255
     }
 }
 
