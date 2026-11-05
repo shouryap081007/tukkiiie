@@ -195,6 +195,7 @@ impl Pomodoro {
         self.running = true;
         self.started = true;
         self.notice = Some(Notice::StudyComplete);
+        self.emit_wave();
     }
     fn finish_break(&mut self) {
         self.phase = Phase::Study;
@@ -202,6 +203,14 @@ impl Pomodoro {
         self.running = false;
         self.started = false;
         self.notice = Some(Notice::BreakComplete);
+        self.emit_wave();
+    }
+
+    fn emit_wave(&mut self) {
+        self.model_events.push(PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(),
+            index: 1,
+        });
     }
 }
 
