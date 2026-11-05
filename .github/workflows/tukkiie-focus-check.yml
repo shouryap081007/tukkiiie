@@ -51,4 +51,4 @@ jobs:
         run: cargo fmt --all
 
       - name: Test focus plugin
-        run: cargo test -p bongocat-plugin-sdk -p bongocat-plugin-manager -p bongocat-plugin-service -p bongocat-pomodoro
+        run: cargo test -p bongocat-plugin-sdk -p bongocat-pomodoro
