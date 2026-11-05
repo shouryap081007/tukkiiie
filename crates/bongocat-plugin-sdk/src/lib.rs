@@ -117,6 +117,34 @@ pub enum Capability {
     /// [`Capability::InputActivityV1`] gates its message: a plugin declares what
     /// it handles, so the host never sends it a frame it would fail to parse.
     LocalizedViewsV1,
+    /// May publish bounded events that ask the host to animate its active model.
+    ModelBehaviorV1,
+}
+
+/// A model reaction requested by a plugin that declares `ModelBehaviorV1`.
+///
+/// The host validates the motion against the active model before sending it to
+/// the runtime. Plugins cannot access the renderer or runtime directly.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum PluginModelEvent {
+    StartMotion {
+        group: String,
+        index: usize,
+    },
+}
+
+impl PluginModelEvent {
+    pub fn validate(&self) -> bool {
+        match self {
+            Self::StartMotion { group, index } => {
+                !group.trim().is_empty()
+                    && group.len() <= 128
+                    && !group.chars().any(char::is_control)
+                    && *index <= 255
+            }
+        }
+    }
 }
 
 /// Privacy-bounded sound groups; ordinary keyboard keys share one identity.
@@ -622,6 +650,10 @@ pub struct PluginOutput {
     pub settings: PluginView,
     pub config: Configuration,
     pub state: Vec<u8>,
+    /// One-shot model reactions. The service dispatches these only for plugins
+    /// that declare ModelBehaviorV1, then the next plugin response replaces them.
+    #[serde(default)]
+    pub model_events: Vec<PluginModelEvent>,
     /// Current user-facing failures, not view nodes or persisted session data.
     /// Stable ids let the host notify once until recovery, even across locale changes.
     pub errors: Vec<PluginError>,
@@ -640,6 +672,8 @@ impl PluginOutput {
             && self.settings.validate()
             && self.state.len() <= 64 * 1024
             && self.config.len() <= 64
+            && self.model_events.len() <= 8
+            && self.model_events.iter().all(PluginModelEvent::validate)
             && self.errors.len() <= 8
             && self.errors.iter().all(|error| {
                 valid_key(&error.id)
