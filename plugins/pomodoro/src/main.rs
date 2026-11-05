@@ -1,6 +1,6 @@
 //! Local-first study and break timer, kept outside the Live2D and input paths.
 #![forbid(unsafe_code)]
-use bongocat_plugin_sdk::{ActionIcon, Anchor, ConfigValue, Configuration, HostMessage, Plugin, PluginModelEvent, PluginOutput, PluginView, UiNode};
+use bongocat_plugin_sdk::{ActionIcon, Anchor, ConfigValue, Configuration, HostMessage, Plugin, PluginModelEvent, PluginOutput, PluginView, StatusIcon, UiNode};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -11,19 +11,19 @@ const MAX_BREAK_MINUTES: i64 = 60;
 const MAX_SAVED_SESSIONS: usize = 90;
 
 struct Copy {
-    study: &'static str, break_label: &'static str, start: &'static str, pause: &'static str,
+    study: &'static str, break_label: &'static str, studying: &'static str, start: &'static str, pause: &'static str,
     restart: &'static str, finish_early: &'static str, study_minutes: &'static str,
     break_minutes: &'static str, study_complete: &'static str, break_complete: &'static str,
     ended_early: &'static str, today: &'static str, sessions: &'static str, minutes: &'static str,
 }
 const ENGLISH: Copy = Copy {
-    study: "Study", break_label: "Break", start: "Start", pause: "Pause", restart: "Restart",
+    study: "Study", break_label: "Break", studying: "Studying", start: "Start", pause: "Pause", restart: "Restart",
     finish_early: "Finish early", study_minutes: "Study minutes", break_minutes: "Break minutes",
     study_complete: "Study complete. Break time!", break_complete: "Break over. Ready when you are.",
     ended_early: "Session ended early.", today: "Today", sessions: "sessions", minutes: "min",
 };
 const SIMPLIFIED_CHINESE: Copy = Copy {
-    study: "学习", break_label: "休息", start: "开始", pause: "暂停", restart: "重新计时",
+    study: "学习", break_label: "休息", studying: "学习中", start: "开始", pause: "暂停", restart: "重新计时",
     finish_early: "提前结束", study_minutes: "学习时长（分钟）", break_minutes: "休息时长（分钟）",
     study_complete: "学习完成。休息一下！", break_complete: "休息结束，准备好继续了吗？",
     ended_early: "本次学习提前结束。", today: "今日", sessions: "次", minutes: "分钟",
@@ -143,6 +143,12 @@ impl Pomodoro {
         let mut model_nodes = vec![UiNode::Text {
             text: format!("{phase_label} · {}", format_clock(clock_ms)),
         }];
+        if self.phase == Phase::Study && self.running {
+            model_nodes.push(UiNode::IconText {
+                icon: study_book_icon(),
+                text: copy.studying.into(),
+            });
+        }
         let notice = match self.notice {
             Some(Notice::StudyComplete) => Some(copy.study_complete),
             Some(Notice::BreakComplete) => Some(copy.break_complete),
@@ -228,6 +234,90 @@ impl Pomodoro {
             index: 1,
             looping: false,
         });
+    }
+}
+
+
+/// A tiny open-book glyph for the model-window HUD. It is generated locally so
+/// the plugin needs no extra image asset, file access or network request.
+fn study_book_icon() -> StatusIcon {
+    const SIZE: usize = 32;
+    let mut pixels = vec![0u8; SIZE * SIZE * 4];
+    let paper = [232, 243, 248, 255];
+    let ink = [79, 178, 205, 255];
+    let ruling = [54, 112, 139, 255];
+
+    fill_icon_polygon(&mut pixels, &[(4, 7), (14, 10), (14, 26), (4, 23)], paper);
+    fill_icon_polygon(&mut pixels, &[(17, 10), (27, 7), (27, 23), (17, 26)], paper);
+
+    for (x0, y0, x1, y1) in [
+        (4, 7, 14, 10), (14, 10, 14, 26), (14, 26, 4, 23), (4, 23, 4, 7),
+        (17, 10, 27, 7), (27, 7, 27, 23), (27, 23, 17, 26), (17, 26, 17, 10),
+        (15, 10, 15, 27), (16, 10, 16, 27),
+    ] {
+        draw_icon_line(&mut pixels, x0, y0, x1, y1, ink);
+    }
+    for (x0, y0, x1, y1) in [
+        (7, 14, 12, 16), (7, 18, 12, 20),
+        (19, 16, 24, 14), (19, 20, 24, 18),
+    ] {
+        draw_icon_line(&mut pixels, x0, y0, x1, y1, ruling);
+    }
+
+    StatusIcon::Rgba(pixels)
+}
+
+fn fill_icon_polygon(
+    pixels: &mut [u8],
+    points: &[(i32, i32)],
+    color: [u8; 4],
+) {
+    for y in 0..32 {
+        for x in 0..32 {
+            let mut inside = false;
+            let mut previous = points.len() - 1;
+            for current in 0..points.len() {
+                let (xi, yi) = points[current];
+                let (xj, yj) = points[previous];
+                if (yi > y) != (yj > y)
+                    && (x as f32)
+                        < (xj - xi) as f32 * (y - yi) as f32 / (yj - yi) as f32 + xi as f32
+                {
+                    inside = !inside;
+                }
+                previous = current;
+            }
+            if inside {
+                let offset = (y as usize * 32 + x as usize) * 4;
+                pixels[offset..offset + 4].copy_from_slice(&color);
+            }
+        }
+    }
+}
+
+fn draw_icon_line(
+    pixels: &mut [u8],
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+    color: [u8; 4],
+) {
+    let steps = (x1 - x0).abs().max((y1 - y0).abs()).max(1);
+    for step in 0..=steps {
+        let progress = step as f32 / steps as f32;
+        let x = (x0 as f32 + (x1 - x0) as f32 * progress).round() as i32;
+        let y = (y0 as f32 + (y1 - y0) as f32 * progress).round() as i32;
+        for dy in 0..2 {
+            for dx in 0..2 {
+                let px = x + dx;
+                let py = y + dy;
+                if (0..32).contains(&px) && (0..32).contains(&py) {
+                    let offset = (py as usize * 32 + px as usize) * 4;
+                    pixels[offset..offset + 4].copy_from_slice(&color);
+                }
+            }
+        }
     }
 }
 
