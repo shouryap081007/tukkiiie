@@ -145,7 +145,7 @@ fn one_shot_terminal_evaluation_keeps_natural_fade_weights() {
 }
 
 #[test]
-fn bundled_tukkiiie_study_motion_is_a_looping_downward_gaze() {
+fn bundled_tukkiiie_study_motion_is_a_looping_focused_lean() {
     let clip = MotionClip::from_slice(
         include_bytes!("../../../../../resources/models/standard/tukkiiie_study.motion3.json"),
         0.6,
@@ -155,19 +155,24 @@ fn bundled_tukkiiie_study_motion_is_a_looping_downward_gaze() {
 
     assert!(clip.is_looping());
     assert_eq!(clip.duration(), Duration::from_secs(8));
-    let gaze = clip.evaluate(Duration::from_secs(2));
-    let eye_y = gaze
+    let focused = clip.evaluate(Duration::from_secs(2));
+    let body_y = focused
         .parameters
         .iter()
-        .find(|parameter| parameter.id == "ParamEyeBallY")
-        .expect("study motion controls eye gaze");
-    assert!((eye_y.value - (-0.30)).abs() < 0.001);
+        .find(|parameter| parameter.id == "ParamBodyAngleY")
+        .expect("study motion controls body lean");
+    let body_z = focused
+        .parameters
+        .iter()
+        .find(|parameter| parameter.id == "ParamBodyAngleZ")
+        .expect("study motion adds a small body sway");
+    assert!((body_y.value - 2.6).abs() < 0.001);
+    assert!((body_z.value - (-0.6)).abs() < 0.001);
     let wrapped = clip.evaluate(Duration::from_secs(10));
-    let initial = clip.evaluate(Duration::from_secs(2));
-    let wrapped_eye_y = wrapped
+    let wrapped_body_y = wrapped
         .parameters
         .iter()
-        .find(|parameter| parameter.id == "ParamEyeBallY")
-        .expect("looped study motion keeps eye gaze");
-    assert!((wrapped_eye_y.value - initial.parameters[1].value).abs() < 0.001);
+        .find(|parameter| parameter.id == "ParamBodyAngleY")
+        .expect("looped study motion keeps its body lean");
+    assert!((wrapped_body_y.value - body_y.value).abs() < 0.001);
 }
