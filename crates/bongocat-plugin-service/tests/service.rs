@@ -105,9 +105,9 @@ fn a_plugin_without_chinese_copy_reads_english_on_its_card_and_controls() {
     assert!(card.localizations.is_empty());
     assert_eq!(
         card.copy("zh-CN"),
-        (
-            "Pomodoro",
-            "A focus timer that helps you stay focused and plan your time."
+        ( study timer with 
+            "Tukkiiie Focus",
+            "A local-first study timer with automatic breaks and daily study summaries."
         )
     );
     assert!(card.actions.iter().any(|node| matches!(node,
@@ -264,7 +264,7 @@ fn a_click_on_a_control_reaches_the_plugin_that_drew_it() {
     assert!(
         center.cards[0].actions.iter().any(|node| matches!(
             node,
-            bongocat_plugin_sdk::UiNode::Text { text } if text == "25:00"
+            bongocat_plugin_sdk::UiNode::Text { text } if text == "Study · 25:00"
         )),
         "restart must set the pomodoro timer to the configured length"
     );
