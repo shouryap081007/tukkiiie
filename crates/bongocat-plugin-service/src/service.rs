@@ -856,10 +856,13 @@ impl Worker {
                 action,
                 reply,
             } => {
-                let result = self
-                    .manager
-                    .action_plugin(&plugin, &action)
-                    .map_err(|error| operation(&error));
+                let result = match self.manager.action_plugin(&plugin, &action) {
+                    Ok(output) => {
+                        self.dispatch_plugin_model_events(&plugin, output);
+                        Ok(())
+                    }
+                    Err(error) => Err(operation(&error)),
+                };
                 if result.is_ok() {
                     self.interaction_failures.remove(&plugin);
                 }
@@ -978,9 +981,13 @@ impl Worker {
                             _ => false,
                         }) {
                             Some(UiNode::Button { .. }) => (
-                                self.manager
-                                    .action_plugin(&interaction.plugin, &interaction.id)
-                                    .map_err(|error| operation(&error)),
+                                match self.manager.action_plugin(&interaction.plugin, &interaction.id) {
+                                    Ok(output) => {
+                                        self.dispatch_plugin_model_events(&interaction.plugin, output);
+                                        Ok(())
+                                    }
+                                    Err(error) => Err(operation(&error)),
+                                },
                                 crate::PluginInteractionFailure::Action {
                                     action: interaction.id.clone(),
                                     code: PluginCommandError::Operation,
@@ -1041,13 +1048,17 @@ impl Worker {
     /// the corresponding capability. The callback is owned by the app boundary;
     /// the plugin service never depends on the runtime or renderer crates.
     fn dispatch_model_events(&self, updates: Vec<(String, PluginOutput)>) {
+        for (plugin, output) in updates {
+            self.dispatch_plugin_model_events(&plugin, output);
+        }
+    }
+
+    fn dispatch_plugin_model_events(&self, plugin: &str, output: PluginOutput) {
         let Some(sink) = self.model_events.as_ref() else {
             return;
         };
-        for (plugin, output) in updates {
-            for event in output.model_events {
-                sink(&plugin, event);
-            }
+        for event in output.model_events {
+            sink(plugin, event);
         }
     }
 
