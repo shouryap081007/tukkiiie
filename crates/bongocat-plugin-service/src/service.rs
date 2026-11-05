@@ -981,7 +981,7 @@ impl Worker {
                             _ => false,
                         }) {
                             Some(UiNode::Button { .. }) => (
-                                match self.manager.action_plugin(&interaction.plugin, &interaction.id) {
+                                match self.manager.action_plugin_with_output(&interaction.plugin, &interaction.id) {
                                     Ok(output) => {
                                         self.dispatch_plugin_model_events(&interaction.plugin, output);
                                         Ok(())
