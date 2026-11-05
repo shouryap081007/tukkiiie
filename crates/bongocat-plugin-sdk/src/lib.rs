@@ -117,14 +117,12 @@ pub enum Capability {
     /// [`Capability::InputActivityV1`] gates its message: a plugin declares what
     /// it handles, so the host never sends it a frame it would fail to parse.
     LocalizedViewsV1,
-    /// May publish bounded events that ask the host to animate its active model.
-    ModelBehaviorV1,
 }
 
-/// A model reaction requested by a plugin that declares `ModelBehaviorV1`.
+/// A bounded model reaction requested by a plugin.
 ///
-/// The host validates the motion against the active model before sending it to
-/// the runtime. Plugins cannot access the renderer or runtime directly.
+/// The app decides which plugin IDs are authorized and forwards permitted
+/// reactions to the runtime. Plugins cannot access the renderer directly.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PluginModelEvent {
@@ -650,8 +648,8 @@ pub struct PluginOutput {
     pub settings: PluginView,
     pub config: Configuration,
     pub state: Vec<u8>,
-    /// One-shot model reactions. The service dispatches these only for plugins
-    /// that declare ModelBehaviorV1, then the next plugin response replaces them.
+    /// One-shot model reactions. The service forwards these to the host callback;
+    /// the app decides which plugin IDs are authorized to control the active model.
     #[serde(default)]
     pub model_events: Vec<PluginModelEvent>,
     /// Current user-facing failures, not view nodes or persisted session data.
