@@ -489,6 +489,14 @@ pub enum RuntimeCommand {
         motion: MotionId,
         priority: MotionPriority,
     },
+    /// Starts a motion and keeps looping it until [`RuntimeCommand::StopMotion`].
+    ///
+    /// This is reserved for host-controlled ambient states such as the study
+    /// pose; shortcut and preview triggers remain one-shot.
+    StartLoopingMotion {
+        motion: MotionId,
+        priority: MotionPriority,
+    },
     /// Plays one clip once for a UI preview at [`MotionPriority::Force`].
     /// Unlike [`RuntimeCommand::StartMotion`], every request restarts the
     /// preview.
