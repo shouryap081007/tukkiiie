@@ -279,6 +279,7 @@ impl Plugin for Pomodoro {
                     self.started = false;
                     self.last_tick = None;
                     self.notice = Some(Notice::EndedEarly);
+                    self.emit_wave();
                 }
                 "finish_early" => return Err("There is no active study time to record".into()),
                 _ => return Err("Unknown study timer action".into()),
@@ -302,14 +303,18 @@ mod tests {
     fn action(plugin: &mut Pomodoro, id: &str) {
         plugin.handle(HostMessage::Action { id: id.into() }).unwrap();
     }
-    fn tick(plugin: &mut Pomodoro, elapsed_ms: u64) {
-        plugin.handle(HostMessage::Tick { elapsed_ms }).unwrap();
+    fn tick(plugin: &mut Pomodoro, elapsed_ms: u64) -> PluginOutput {
+        plugin.handle(HostMessage::Tick { elapsed_ms }).unwrap()
     }
 
     #[test]
     fn study_completion_starts_a_break_and_records_the_session() {
         let mut p = Pomodoro { minutes: 1, break_minutes: 5, ..Default::default() };
-        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0); tick(&mut p, 60_000);
+        tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0);
+        let output = tick(&mut p, 60_000);
+        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(), index: 1,
+        }]);
         assert_eq!(p.phase, Phase::Break);
         assert!(p.running);
         assert_eq!(p.remaining_ms, 5 * 60_000);
@@ -407,7 +412,7 @@ mod tests {
 
     #[test]
     fn output_exposes_both_duration_settings_and_daily_summary() {
-        let p = Pomodoro::default();
+        let mut p = Pomodoro::default();
         let output = p.output().unwrap();
         assert!(output.model.validate());
         assert!(output.settings.validate());
