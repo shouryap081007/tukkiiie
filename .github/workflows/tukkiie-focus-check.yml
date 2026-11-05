@@ -7,6 +7,9 @@ on:
     paths:
       - "plugins/pomodoro/**"
       - "crates/bongocat-plugin-sdk/**"
+      - "crates/bongocat-plugin-manager/**"
+      - "crates/bongocat-plugin-service/**"
+      - "crates/bongocat-app/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/tukkiie-focus-check.yml"
@@ -48,4 +51,4 @@ jobs:
         run: cargo fmt --all
 
       - name: Test focus plugin
-        run: cargo test -p bongocat-pomodoro
+        run: cargo test -p bongocat-plugin-sdk -p bongocat-plugin-manager -p bongocat-plugin-service -p bongocat-pomodoro
