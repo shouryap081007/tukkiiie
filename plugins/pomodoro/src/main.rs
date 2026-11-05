@@ -134,7 +134,7 @@ impl Pomodoro {
         self.focus_elapsed_ms = 0;
     }
 
-    fn output(&self) -> Result<PluginOutput, String> {
+    fn output(&mut self) -> Result<PluginOutput, String> {
         let copy = self.copy();
         let clock_ms = if self.started { self.remaining_ms } else { self.phase_ms() };
         let phase_label = match self.phase { Phase::Study => copy.study, Phase::Break => copy.break_label };
@@ -182,6 +182,7 @@ impl Pomodoro {
                 ("break_minutes".into(), ConfigValue::Integer(self.break_minutes)),
             ].into(),
             state: serde_json::to_vec(self).map_err(|_| "Cannot save study timer")?,
+            model_events: std::mem::take(&mut self.model_events),
             errors: Vec::new(),
         })
     }
