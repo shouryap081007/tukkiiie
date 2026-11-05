@@ -308,14 +308,32 @@ fn handle_plugin_model_event(
         return;
     }
     match event {
-        bongocat_plugin_service::PluginModelEvent::StartMotion { group, index } => {
+        bongocat_plugin_service::PluginModelEvent::StartMotion {
+            group,
+            index,
+            looping,
+        } => {
             let Ok(motion) = MotionId::new(group, index) else {
                 return;
             };
-            let _ = runtime.send(RuntimeCommand::StartMotion {
-                motion,
-                priority: MotionPriority::Normal,
-            });
+            let command = if looping {
+                RuntimeCommand::StartLoopingMotion {
+                    motion,
+                    priority: MotionPriority::Normal,
+                }
+            } else {
+                RuntimeCommand::StartMotion {
+                    motion,
+                    priority: MotionPriority::Normal,
+                }
+            };
+            let _ = runtime.send(command);
+        }
+        bongocat_plugin_service::PluginModelEvent::StopMotion { group, index } => {
+            let Ok(motion) = MotionId::new(group, index) else {
+                return;
+            };
+            let _ = runtime.send(RuntimeCommand::StopMotion(motion));
         }
     }
 }
