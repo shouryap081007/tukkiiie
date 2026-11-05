@@ -279,7 +279,6 @@ impl Plugin for Pomodoro {
                     self.started = false;
                     self.last_tick = None;
                     self.notice = Some(Notice::EndedEarly);
-                    self.emit_wave();
                 }
                 "finish_early" => return Err("There is no active study time to record".into()),
                 _ => return Err("Unknown study timer action".into()),
@@ -352,10 +351,7 @@ mod tests {
     fn finishing_early_records_only_the_actual_study_time() {
         let mut p = Pomodoro { minutes: 25, ..Default::default() };
         tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0); tick(&mut p, 12_000);
-        let output = action(&mut p, "finish_early");
-        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
-            group: "CAT_motion".into(), index: 1,
-        }]);
+        let _output = action(&mut p, "finish_early");
         assert_eq!(p.sessions.len(), 1);
         assert!(!p.sessions[0].completed);
         assert_eq!(p.sessions[0].elapsed_ms, 12_000);
