@@ -14,19 +14,35 @@ struct Copy {
     study: &'static str, break_label: &'static str, studying: &'static str, start: &'static str, pause: &'static str,
     restart: &'static str, finish_early: &'static str, study_minutes: &'static str,
     break_minutes: &'static str, study_complete: &'static str, break_complete: &'static str,
-    ended_early: &'static str, today: &'static str, sessions: &'static str, minutes: &'static str,
+    ended_early: &'static str, bubble_study_started: &'static str, bubble_paused: &'static str,
+    bubble_mid_study: &'static str, bubble_study_complete: &'static str, bubble_break_complete: &'static str,
+    bubble_ended_early: &'static str, today: &'static str, sessions: &'static str, minutes: &'static str,
 }
 const ENGLISH: Copy = Copy {
     study: "Study", break_label: "Break", studying: "Studying", start: "Start", pause: "Pause", restart: "Restart",
     finish_early: "Finish early", study_minutes: "Study minutes", break_minutes: "Break minutes",
     study_complete: "Study complete. Break time!", break_complete: "Break over. Ready when you are.",
-    ended_early: "Session ended early.", today: "Today", sessions: "sessions", minutes: "min",
+    ended_early: "Session ended early.",
+    bubble_study_started: "Back to work, professional procrastinator.",
+    bubble_paused: "Already tired? The chapter barely noticed.",
+    bubble_mid_study: "Halfway there. Don't negotiate with the timer.",
+    bubble_study_complete: "Look at you, academically suspicious. Break time!",
+    bubble_break_complete: "Break's over. Your backlog misses you.",
+    bubble_ended_early: "Leaving already? The backlog says thanks.",
+    today: "Today", sessions: "sessions", minutes: "min",
 };
 const SIMPLIFIED_CHINESE: Copy = Copy {
     study: "学习", break_label: "休息", studying: "学习中", start: "开始", pause: "暂停", restart: "重新计时",
     finish_early: "提前结束", study_minutes: "学习时长（分钟）", break_minutes: "休息时长（分钟）",
     study_complete: "学习完成。休息一下！", break_complete: "休息结束，准备好继续了吗？",
-    ended_early: "本次学习提前结束。", today: "今日", sessions: "次", minutes: "分钟",
+    ended_early: "本次学习提前结束。",
+    bubble_study_started: "该学习了，拖延专家。",
+    bubble_paused: "已经累了？课本才刚认出你。",
+    bubble_mid_study: "过半了，别跟计时器讨价还价。",
+    bubble_study_complete: "今天居然这么自律？休息时间！",
+    bubble_break_complete: "休息结束，你的 backlog 想你了。",
+    bubble_ended_early: "这么快就走？积压任务可开心了。",
+    today: "今日", sessions: "次", minutes: "分钟",
 };
 fn copy_for(locale: &str) -> &'static Copy {
     if locale == "zh-CN" { &SIMPLIFIED_CHINESE } else { &ENGLISH }
@@ -71,6 +87,10 @@ struct Pomodoro {
     notice: Option<Notice>,
     #[serde(skip)]
     model_events: Vec<PluginModelEvent>,
+    #[serde(skip)]
+    bubble: Option<String>,
+    #[serde(skip)]
+    bubble_remaining_ms: u64,
 }
 const fn default_break_minutes() -> i64 { DEFAULT_BREAK_MINUTES }
 
@@ -81,6 +101,7 @@ impl Default for Pomodoro {
             minutes: DEFAULT_STUDY_MINUTES, break_minutes: DEFAULT_BREAK_MINUTES,
             phase: Phase::Study, focus_elapsed_ms: 0, session_day: None, sessions: Vec::new(),
             last_tick: None, locale: None, notice: None, model_events: Vec::new(),
+            bubble: None, bubble_remaining_ms: 0,
         }
     }
 }
@@ -95,6 +116,10 @@ impl Pomodoro {
     fn break_ms(&self) -> u64 { self.break_minutes.max(1) as u64 * 60_000 }
     fn phase_ms(&self) -> u64 {
         match self.phase { Phase::Study => self.study_ms(), Phase::Break => self.break_ms() }
+    }
+    fn show_bubble(&mut self, message: &'static str) {
+        self.bubble = Some(message.into());
+        self.bubble_remaining_ms = 4_000;
     }
 
     fn configure(&mut self, config: &Configuration) -> Result<(), String> {
@@ -149,6 +174,12 @@ impl Pomodoro {
                 text: copy.studying.into(),
             });
         }
+        if let Some(text) = self.bubble.as_deref() {
+            model_nodes.push(UiNode::IconText {
+                icon: StatusIcon::Badge("...".into()),
+                text: text.into(),
+            });
+        }
         let notice = match self.notice {
             Some(Notice::StudyComplete) => Some(copy.study_complete),
             Some(Notice::BreakComplete) => Some(copy.break_complete),
@@ -201,6 +232,7 @@ impl Pomodoro {
         self.running = true;
         self.started = true;
         self.notice = Some(Notice::StudyComplete);
+        self.show_bubble(self.copy().bubble_study_complete);
         self.emit_stop_study_motion();
         self.emit_wave();
     }
@@ -210,6 +242,7 @@ impl Pomodoro {
         self.running = false;
         self.started = false;
         self.notice = Some(Notice::BreakComplete);
+        self.show_bubble(self.copy().bubble_break_complete);
         self.emit_wave();
     }
 
@@ -338,17 +371,30 @@ impl Plugin for Pomodoro {
                 self.running = false;
                 self.last_tick = None;
                 self.notice = None;
+                self.bubble = None;
+                self.bubble_remaining_ms = 0;
                 self.configure(&config)?;
             }
             HostMessage::Configure { config } => self.configure(&config)?,
             HostMessage::InputActivity { .. } | HostMessage::InputEvents { .. } => {}
             HostMessage::Tick { elapsed_ms } => {
+                let delta_ms = self.last_tick.map_or(0, |previous| elapsed_ms.saturating_sub(previous));
+                if self.bubble.is_some() && delta_ms > 0 {
+                    self.bubble_remaining_ms = self.bubble_remaining_ms.saturating_sub(delta_ms);
+                    if self.bubble_remaining_ms == 0 { self.bubble = None; }
+                }
                 if self.running {
-                    if let Some(previous) = self.last_tick {
-                        let delta_ms = elapsed_ms.saturating_sub(previous);
+                    if self.last_tick.is_some() {
+                        let previous_remaining = self.remaining_ms;
                         self.remaining_ms = self.remaining_ms.saturating_sub(delta_ms);
                         if self.phase == Phase::Study {
                             self.focus_elapsed_ms = self.focus_elapsed_ms.saturating_add(delta_ms).min(self.study_ms());
+                            if previous_remaining > self.study_ms() / 2
+                                && self.remaining_ms <= self.study_ms() / 2
+                                && self.remaining_ms > 0
+                            {
+                                self.show_bubble(self.copy().bubble_mid_study);
+                            }
                         }
                         if self.remaining_ms == 0 {
                             match self.phase { Phase::Study => self.finish_study(), Phase::Break => self.finish_break() }
@@ -359,6 +405,7 @@ impl Plugin for Pomodoro {
             }
             HostMessage::Action { id } => match id.as_str() {
                 "toggle" => {
+                    let was_running = self.running;
                     if self.remaining_ms == 0 { self.remaining_ms = self.phase_ms(); }
                     if !self.running && self.phase == Phase::Study && self.focus_elapsed_ms == 0 {
                         self.session_day = Some(local_day_key());
@@ -367,8 +414,10 @@ impl Plugin for Pomodoro {
                     if self.phase == Phase::Study {
                         if self.running {
                             self.emit_study_motion();
+                            if !was_running { self.show_bubble(self.copy().bubble_study_started); }
                         } else {
                             self.emit_stop_study_motion();
+                            if was_running { self.show_bubble(self.copy().bubble_paused); }
                         }
                     }
                     self.started = true;
@@ -384,6 +433,7 @@ impl Plugin for Pomodoro {
                     self.running = true;
                     if self.phase == Phase::Study {
                         self.emit_study_motion();
+                        self.show_bubble(self.copy().bubble_study_started);
                     }
                     self.started = true;
                     self.last_tick = None;
@@ -396,6 +446,7 @@ impl Plugin for Pomodoro {
                     self.started = false;
                     self.last_tick = None;
                     self.notice = Some(Notice::EndedEarly);
+                    self.show_bubble(self.copy().bubble_ended_early);
                     self.emit_stop_study_motion();
                 }
                 "finish_early" => return Err("There is no active study time to record".into()),
