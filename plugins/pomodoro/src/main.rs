@@ -195,6 +195,7 @@ impl Pomodoro {
         self.running = true;
         self.started = true;
         self.notice = Some(Notice::StudyComplete);
+        self.emit_stop_study_motion();
         self.emit_wave();
     }
     fn finish_break(&mut self) {
@@ -206,10 +207,26 @@ impl Pomodoro {
         self.emit_wave();
     }
 
+    fn emit_study_motion(&mut self) {
+        self.model_events.push(PluginModelEvent::StartMotion {
+            group: "Tukkiiie_Study".into(),
+            index: 0,
+            looping: true,
+        });
+    }
+
+    fn emit_stop_study_motion(&mut self) {
+        self.model_events.push(PluginModelEvent::StopMotion {
+            group: "Tukkiiie_Study".into(),
+            index: 0,
+        });
+    }
+
     fn emit_wave(&mut self) {
         self.model_events.push(PluginModelEvent::StartMotion {
             group: "CAT_motion".into(),
             index: 1,
+            looping: false,
         });
     }
 }
@@ -257,6 +274,13 @@ impl Plugin for Pomodoro {
                         self.session_day = Some(local_day_key());
                     }
                     self.running = !self.running;
+                    if self.phase == Phase::Study {
+                        if self.running {
+                            self.emit_study_motion();
+                        } else {
+                            self.emit_stop_study_motion();
+                        }
+                    }
                     self.started = true;
                     self.last_tick = None;
                     self.notice = None;
@@ -268,6 +292,9 @@ impl Plugin for Pomodoro {
                         self.session_day = Some(local_day_key());
                     }
                     self.running = true;
+                    if self.phase == Phase::Study {
+                        self.emit_study_motion();
+                    }
                     self.started = true;
                     self.last_tick = None;
                     self.notice = None;
@@ -279,14 +306,27 @@ impl Plugin for Pomodoro {
                     self.started = false;
                     self.last_tick = None;
                     self.notice = Some(Notice::EndedEarly);
+                    self.emit_stop_study_motion();
                 }
                 "finish_early" => return Err("There is no active study time to record".into()),
                 _ => return Err("Unknown study timer action".into()),
             },
             HostMessage::Preview { .. } => return Err("Unknown study timer preview".into()),
             HostMessage::Locale { locale } => self.locale = Some(locale),
-            HostMessage::Pause | HostMessage::Stop => { self.running = false; self.last_tick = None; }
-            HostMessage::Resume => { self.running = self.remaining_ms > 0; self.last_tick = None; }
+            HostMessage::Pause | HostMessage::Stop => {
+                if self.phase == Phase::Study && self.running {
+                    self.emit_stop_study_motion();
+                }
+                self.running = false;
+                self.last_tick = None;
+            }
+            HostMessage::Resume => {
+                self.running = self.remaining_ms > 0;
+                if self.phase == Phase::Study && self.running {
+                    self.emit_study_motion();
+                }
+                self.last_tick = None;
+            }
             HostMessage::Reset => { *self = Self { locale: self.locale.take(), ..Default::default() }; }
             HostMessage::Handshake { .. } => return Err("Handshake belongs to SDK".into()),
         }
