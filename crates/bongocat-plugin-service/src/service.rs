@@ -19,9 +19,7 @@ use bongocat_plugin_hud::{
 use bongocat_plugin_manager::{
     AvailablePlugin, PluginManager, PluginManagerError, PluginSource, PluginState, RegistryError,
 };
-use bongocat_plugin_sdk::{
-    Capability, ConfigValue, InputActivity, PluginModelEvent, PluginOutput, UiNode,
-};
+use bongocat_plugin_sdk::{ConfigValue, InputActivity, PluginModelEvent, PluginOutput, UiNode};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -1046,21 +1044,9 @@ impl Worker {
         let Some(sink) = self.model_events.as_ref() else {
             return;
         };
-        let authorized = self
-            .manager
-            .list_plugins()
-            .into_iter()
-            .filter(|(metadata, state)| {
-                *state == PluginState::Enabled
-                    && metadata.capabilities.contains(&Capability::ModelBehaviorV1)
-            })
-            .map(|(metadata, _)| metadata.id)
-            .collect::<std::collections::BTreeSet<_>>();
         for (plugin, output) in updates {
-            if authorized.contains(&plugin) {
-                for event in output.model_events {
-                    sink(&plugin, event);
-                }
+            for event in output.model_events {
+                sink(&plugin, event);
             }
         }
     }
