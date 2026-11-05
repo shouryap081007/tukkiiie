@@ -351,9 +351,14 @@ mod tests {
         let mut p = Pomodoro { minutes: 1, break_minutes: 5, ..Default::default() };
         tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0);
         let output = tick(&mut p, 60_000);
-        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
-            group: "CAT_motion".into(), index: 1,
-        }]);
+        assert_eq!(output.model_events, vec![
+            PluginModelEvent::StopMotion {
+                group: "Tukkiiie_Study".into(), index: 0,
+            },
+            PluginModelEvent::StartMotion {
+                group: "CAT_motion".into(), index: 1, looping: false,
+            },
+        ]);
         assert_eq!(p.phase, Phase::Break);
         assert!(p.running);
         assert_eq!(p.remaining_ms, 5 * 60_000);
@@ -368,12 +373,26 @@ mod tests {
             started: true, last_tick: Some(0), ..Default::default() };
         let output = tick(&mut p, 5 * 60_000);
         assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
-            group: "CAT_motion".into(), index: 1,
+            group: "CAT_motion".into(), index: 1, looping: false,
         }]);
         assert_eq!(p.phase, Phase::Study);
         assert!(!p.running);
         assert!(!p.started);
         assert_eq!(p.remaining_ms, 25 * 60_000);
+    }
+
+    #[test]
+    fn study_start_and_pause_control_the_looping_study_pose() {
+        let mut p = Pomodoro::default();
+        let start = action(&mut p, "toggle");
+        assert_eq!(start.model_events, vec![PluginModelEvent::StartMotion {
+            group: "Tukkiiie_Study".into(), index: 0, looping: true,
+        }]);
+        let pause = action(&mut p, "toggle");
+        assert_eq!(pause.model_events, vec![PluginModelEvent::StopMotion {
+            group: "Tukkiiie_Study".into(), index: 0,
+        }]);
+        assert!(!p.running);
     }
 
     #[test]
