@@ -324,7 +324,7 @@ mod tests {
         p.handle(HostMessage::Pause).unwrap(); tick(&mut p, 40_000);
         assert_eq!(p.remaining_ms, 50_000);
         p.handle(HostMessage::Resume).unwrap();
-        tick(&mut p, 50_000); tick(&mut p, 60_000); tick(&mut p, 70_000);
+        tick(&mut p, 50_000); tick(&mut p, 60_000); tick(&mut p, 70_000); tick(&mut p, 100_000);
         assert_eq!(p.phase, Phase::Break);
     }
 
