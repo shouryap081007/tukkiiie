@@ -296,7 +296,11 @@ impl PluginManager {
     pub fn disable_plugin(&mut self, id: &str) -> Result<(), PluginManagerError> {
         self.registry.disable(id).map_err(Into::into)
     }
-    pub fn action_plugin(
+    pub fn action_plugin(&mut self, id: &str, action: &str) -> Result<(), PluginManagerError> {
+        self.action_plugin_with_output(id, action).map(|_| ())
+    }
+
+    pub fn action_plugin_with_output(
         &mut self,
         id: &str,
         action: &str,
