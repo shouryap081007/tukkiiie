@@ -491,6 +491,7 @@ pub(crate) fn run_worker(receiver: Receiver<CommandEnvelope>, bootstrap: Runtime
                     }
                     WorkerCommand::Product(
                         command @ (RuntimeCommand::StartMotion { .. }
+                        | RuntimeCommand::StartLoopingMotion { .. }
                         | RuntimeCommand::PreviewMotion(_)),
                     ) => {
                         // Both trigger sources play a single cycle. A shortcut
@@ -499,11 +500,17 @@ pub(crate) fn run_worker(receiver: Receiver<CommandEnvelope>, bootstrap: Runtime
                         // `Meta.Loop` describes how the asset was authored, not
                         // how the product drives it, so honoring it here would
                         // keep the cat animating forever.
-                        let repeat_is_idempotent =
-                            matches!(command, RuntimeCommand::StartMotion { .. });
+                        let repeat_is_idempotent = matches!(
+                            command,
+                            RuntimeCommand::StartMotion { .. }
+                                | RuntimeCommand::StartLoopingMotion { .. }
+                        );
                         let (motion, priority, looping) = match command {
                             RuntimeCommand::StartMotion { motion, priority } => {
                                 (motion, priority, false)
+                            }
+                            RuntimeCommand::StartLoopingMotion { motion, priority } => {
+                                (motion, priority, true)
                             }
                             RuntimeCommand::PreviewMotion(motion) => {
                                 (motion, MotionPriority::Force, false)
