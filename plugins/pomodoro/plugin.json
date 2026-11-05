@@ -1,23 +1,18 @@
 {
   "metadata": {
     "id": "com.bongocat.pomodoro",
-    "name": "Pomodoro",
-    "description": "A focus timer that helps you stay focused and plan your time.",
-    "version": "1.0.0",
+    "name": "Tukkiiie Focus",
+    "description": "A local-first study timer with automatic breaks and daily study summaries.",
+    "version": "1.1.0",
     "app_versions": ">=2.3.1",
     "protocol_version": 1,
     "entry": "bongocat-pomodoro",
     "icon": { "type": "local_image", "value": "resources/icon.png" },
-    "capabilities": [
-      "model_ui",
-      "configuration",
-      "persistent_state",
-      "localized_views_v1"
-    ],
+    "capabilities": ["model_ui", "configuration", "persistent_state", "localized_views_v1"],
     "localizations": {
       "zh-CN": {
-        "name": "番茄时钟",
-        "description": "通过专注计时帮助你保持专注、合理安排时间。"
+        "name": "Tukkiiie 专注助手",
+        "description": "本地学习计时器，支持自动休息和每日学习统计。"
       }
     }
   }
