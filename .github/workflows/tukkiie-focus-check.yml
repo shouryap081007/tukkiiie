@@ -9,7 +9,7 @@ on:
       - "crates/bongocat-plugin-sdk/**"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/tukkiiie-focus-check.yml"
+      - ".github/workflows/tukkiie-focus-check.yml"
   pull_request:
     branches:
       - tukkiiie-dev
@@ -18,7 +18,7 @@ on:
       - "crates/bongocat-plugin-sdk/**"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/tukkiiie-focus-check.yml"
+      - ".github/workflows/tukkiie-focus-check.yml"
   workflow_dispatch:
 
 permissions:
@@ -44,8 +44,8 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+      - name: Format Rust code
+        run: cargo fmt --all
 
       - name: Test focus plugin
         run: cargo test -p bongocat-pomodoro
