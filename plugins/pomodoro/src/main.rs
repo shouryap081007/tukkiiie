@@ -300,8 +300,8 @@ fn main() -> std::io::Result<()> { bongocat_plugin_sdk::run(&mut Pomodoro::defau
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn action(plugin: &mut Pomodoro, id: &str) {
-        plugin.handle(HostMessage::Action { id: id.into() }).unwrap();
+    fn action(plugin: &mut Pomodoro, id: &str) -> PluginOutput {
+        plugin.handle(HostMessage::Action { id: id.into() }).unwrap()
     }
     fn tick(plugin: &mut Pomodoro, elapsed_ms: u64) -> PluginOutput {
         plugin.handle(HostMessage::Tick { elapsed_ms }).unwrap()
@@ -327,7 +327,10 @@ mod tests {
     fn break_completion_returns_to_a_ready_study_timer() {
         let mut p = Pomodoro { phase: Phase::Break, remaining_ms: 5 * 60_000, running: true,
             started: true, last_tick: Some(0), ..Default::default() };
-        tick(&mut p, 5 * 60_000);
+        let output = tick(&mut p, 5 * 60_000);
+        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(), index: 1,
+        }]);
         assert_eq!(p.phase, Phase::Study);
         assert!(!p.running);
         assert!(!p.started);
@@ -349,7 +352,10 @@ mod tests {
     fn finishing_early_records_only_the_actual_study_time() {
         let mut p = Pomodoro { minutes: 25, ..Default::default() };
         tick(&mut p, 0); action(&mut p, "toggle"); tick(&mut p, 0); tick(&mut p, 12_000);
-        action(&mut p, "finish_early");
+        let output = action(&mut p, "finish_early");
+        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(), index: 1,
+        }]);
         assert_eq!(p.sessions.len(), 1);
         assert!(!p.sessions[0].completed);
         assert_eq!(p.sessions[0].elapsed_ms, 12_000);
