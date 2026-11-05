@@ -69,6 +69,8 @@ struct Pomodoro {
     locale: Option<String>,
     #[serde(skip)]
     notice: Option<Notice>,
+    #[serde(skip)]
+    model_events: Vec<PluginModelEvent>,
 }
 const fn default_break_minutes() -> i64 { DEFAULT_BREAK_MINUTES }
 
@@ -78,7 +80,7 @@ impl Default for Pomodoro {
             remaining_ms: 0, running: false, started: false,
             minutes: DEFAULT_STUDY_MINUTES, break_minutes: DEFAULT_BREAK_MINUTES,
             phase: Phase::Study, focus_elapsed_ms: 0, session_day: None, sessions: Vec::new(),
-            last_tick: None, locale: None, notice: None,
+            last_tick: None, locale: None, notice: None, model_events: Vec::new(),
         }
     }
 }
