@@ -1121,10 +1121,26 @@ impl Worker {
             .filter(|(_, state)| *state == PluginState::Enabled)
             .filter_map(|(metadata, _)| {
                 let output = self.manager.plugin_output(&metadata.id)?;
-                Some(PluginHudFrame::new(metadata.id, output.model.clone()))
+                let view = overlay_model_view(&metadata.id, output.model.clone())?;
+                Some(PluginHudFrame::new(metadata.id, view))
             })
             .collect()
     }
+}
+
+/// Keep Tukkiiie Focus's compact study book in the model overlay, but leave its
+/// timer, statistics and buttons in Plugin Center. Drawing the full timer panel
+/// over the Live2D model obscures the cat; filtering a cloned HUD view keeps the
+/// plugin's original output intact for the center's actions and settings.
+fn overlay_model_view(
+    plugin_id: &str,
+    mut view: bongocat_plugin_sdk::PluginView,
+) -> Option<bongocat_plugin_sdk::PluginView> {
+    if plugin_id == "com.bongocat.pomodoro" {
+        view.nodes
+            .retain(|node| matches!(node, UiNode::IconText { .. }));
+    }
+    (!view.nodes.is_empty()).then_some(view)
 }
 
 fn nodes<T: Clone>(
@@ -1147,6 +1163,63 @@ fn operation(error: &PluginManagerError) -> PluginCommandError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn focus_hud_keeps_only_the_book_while_center_retains_timer_controls() {
+        let full_view = bongocat_plugin_sdk::PluginView {
+            anchor: bongocat_plugin_sdk::Anchor::TopRight,
+            nodes: vec![
+                UiNode::Text { text: "Study · 24:59".into() },
+                UiNode::IconText {
+                    icon: bongocat_plugin_sdk::StatusIcon::Badge("B".into()),
+                    text: "Studying".into(),
+                },
+                UiNode::Button {
+                    id: "toggle".into(),
+                    label: "Pause".into(),
+                    icon: bongocat_plugin_sdk::ActionIcon::Pause,
+                    loading: false,
+                },
+            ],
+        };
+        let hud_view = overlay_model_view("com.bongocat.pomodoro", full_view.clone())
+            .expect("active study book remains visible");
+        assert_eq!(hud_view.nodes.len(), 1);
+        assert!(matches!(hud_view.nodes[0], UiNode::IconText { .. }));
+        // Filtering is applied to a clone: Plugin Center still sees the full
+        // timer actions from the manager's original PluginOutput.
+        assert_eq!(full_view.nodes.len(), 3);
+        assert!(full_view.nodes.iter().any(|node| matches!(node, UiNode::Button { id, .. } if id == "toggle")));
+    }
+
+    #[test]
+    fn focus_hud_is_hidden_without_the_active_study_book() {
+        let paused_view = bongocat_plugin_sdk::PluginView {
+            anchor: bongocat_plugin_sdk::Anchor::TopRight,
+            nodes: vec![
+                UiNode::Text { text: "Study · 25:00".into() },
+                UiNode::Button {
+                    id: "toggle".into(),
+                    label: "Start".into(),
+                    icon: bongocat_plugin_sdk::ActionIcon::Play,
+                    loading: false,
+                },
+            ],
+        };
+        assert!(overlay_model_view("com.bongocat.pomodoro", paused_view).is_none());
+    }
+
+    #[test]
+    fn other_plugin_huds_are_not_filtered() {
+        let view = bongocat_plugin_sdk::PluginView {
+            nodes: vec![UiNode::Text { text: "Other plugin".into() }],
+            ..Default::default()
+        };
+        assert_eq!(
+            overlay_model_view("com.example.other", view.clone()).unwrap(),
+            view
+        );
+    }
 
     fn test_worker(store: &tempfile::TempDir) -> Worker {
         let (_, endpoint) = PluginServiceClient::bounded(4);
