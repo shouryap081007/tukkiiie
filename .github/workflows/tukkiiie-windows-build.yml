@@ -48,6 +48,9 @@ jobs:
       - name: Build unsigned development installer
         run: just build --environment development --formats nsis
 
+      - name: Test plugin HUD service
+        run: cargo test --locked -p bongocat-plugin-service
+
       - name: Verify installer exists
         shell: pwsh
         run: |
