@@ -19,7 +19,9 @@ use bongocat_plugin_hud::{
 use bongocat_plugin_manager::{
     AvailablePlugin, PluginManager, PluginManagerError, PluginSource, PluginState, RegistryError,
 };
-use bongocat_plugin_sdk::{ConfigValue, InputActivity, PluginOutput, UiNode};
+use bongocat_plugin_sdk::{
+    Capability, ConfigValue, InputActivity, PluginModelEvent, PluginOutput, UiNode,
+};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -97,7 +99,7 @@ impl PluginService {
         source: PluginSource,
         input_activity: Option<Box<dyn Fn() -> InputActivity + Send>>,
     ) -> Result<(Self, PluginOverlayHandles), PluginServiceStartError> {
-        Self::start_with_inputs(storage_root, capacity, source, input_activity, None)
+        Self::start_with_inputs(storage_root, capacity, source, input_activity, None, None)
     }
 
     pub fn start_with_events(
@@ -106,7 +108,7 @@ impl PluginService {
         source: PluginSource,
         events: Box<dyn crate::PluginInputEvents>,
     ) -> Result<(Self, PluginOverlayHandles), PluginServiceStartError> {
-        Self::start_with_inputs(storage_root, capacity, source, None, Some(events))
+        Self::start_with_inputs(storage_root, capacity, source, None, Some(events), None)
     }
 
     fn start_with_inputs(
@@ -115,6 +117,7 @@ impl PluginService {
         source: PluginSource,
         input_activity: Option<Box<dyn Fn() -> InputActivity + Send>>,
         events: Option<Box<dyn crate::PluginInputEvents>>,
+        model_events: Option<Box<dyn Fn(&str, PluginModelEvent) + Send>>,
     ) -> Result<(Self, PluginOverlayHandles), PluginServiceStartError> {
         let directory = plugin_directory(storage_root);
         let (client, endpoint) = PluginServiceClient::bounded(capacity);
@@ -138,6 +141,7 @@ impl PluginService {
                     source,
                     input_activity,
                     events,
+                    model_events,
                 )
             })
             .map_err(PluginServiceStartError::Spawn)?;
@@ -206,6 +210,7 @@ struct Worker {
     input_activity: Option<Box<dyn Fn() -> InputActivity + Send>>,
     last_input_activity: InputActivity,
     input_events: Option<Box<dyn crate::PluginInputEvents>>,
+    model_events: Option<Box<dyn Fn(&str, PluginModelEvent) + Send>>,
     endpoint: PluginServiceEndpoint,
     hud: OverlaySinks,
     compositor: Option<HudCompositor>,
@@ -271,6 +276,7 @@ fn run(
     source: PluginSource,
     input_activity: Option<Box<dyn Fn() -> InputActivity + Send>>,
     input_events: Option<Box<dyn crate::PluginInputEvents>>,
+    model_events: Option<Box<dyn Fn(&str, PluginModelEvent) + Send>>,
 ) -> Result<(), PluginManagerError> {
     let Ok(mut manager) = PluginManager::new(directory) else {
         // The store could not be opened at all. The service still answers, so the
@@ -309,6 +315,7 @@ fn run(
         input_activity,
         last_input_activity,
         input_events,
+        model_events,
         endpoint,
         hud,
         compositor: load_platform_font().ok().map(HudCompositor::new),
@@ -1028,7 +1035,34 @@ impl Worker {
         }
         self.last_tick = elapsed;
         let now = self.now_ms();
-        self.manager.tick(now);
+        let updates = self.manager.tick(now);
+        self.dispatch_model_events(updates);
+    }
+
+    /// Forward one-shot model events only from enabled plugins that declared
+    /// the corresponding capability. The callback is owned by the app boundary;
+    /// the plugin service never depends on the runtime or renderer crates.
+    fn dispatch_model_events(&self, updates: Vec<(String, PluginOutput)>) {
+        let Some(sink) = self.model_events.as_ref() else {
+            return;
+        };
+        let authorized = self
+            .manager
+            .list_plugins()
+            .into_iter()
+            .filter(|(metadata, state)| {
+                *state == PluginState::Enabled
+                    && metadata.capabilities.contains(&Capability::ModelBehaviorV1)
+            })
+            .map(|(metadata, _)| metadata.id)
+            .collect::<std::collections::BTreeSet<_>>();
+        for (plugin, output) in updates {
+            if authorized.contains(&plugin) {
+                for event in output.model_events {
+                    sink(&plugin, event);
+                }
+            }
+        }
     }
 
     /// Publish the plugins' current views only when their composed input changed.
@@ -1116,6 +1150,7 @@ mod tests {
             input_activity: None,
             last_input_activity: InputActivity::default(),
             input_events: None,
+            model_events: None,
             endpoint,
             hud: OverlaySinks {
                 hud_producer,
