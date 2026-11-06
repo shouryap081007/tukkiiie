@@ -480,6 +480,7 @@ impl Plugin for Pomodoro {
                     self.notice = Some(Notice::EndedEarly);
                     self.show_bubble(self.copy().bubble_ended_early);
                     self.emit_stop_study_motion();
+                    self.emit_wave();
                 }
                 "finish_early" => return Err("There is no active study time to record".into()),
                 _ => return Err("Unknown study timer action".into()),
@@ -504,6 +505,7 @@ impl Plugin for Pomodoro {
                 if self.running {
                     self.emit_stop_phase_motion();
                 }
+                self.emit_wave();
                 let locale = self.locale.take();
                 let model_events = std::mem::take(&mut self.model_events);
                 *self = Self { locale, ..Default::default() };

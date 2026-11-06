@@ -574,6 +574,20 @@ mod tests {
     }
 
     #[test]
+    fn every_builtin_model_prepares_all_tuki_book_frames() {
+        for id in ["standard", "keyboard", "gamepad"] {
+            let resources = prepare_render_resources(&preset_model(id)).expect("render resources");
+            let names = resources
+                .key_assets
+                .iter()
+                .filter(|asset| TUKI_BOOK_ASSET_NAMES.contains(&asset.name.as_str()))
+                .map(|asset| asset.name.as_str())
+                .collect::<BTreeSet<_>>();
+            assert_eq!(names, TUKI_BOOK_ASSET_NAMES.into_iter().collect());
+        }
+    }
+
+    #[test]
     fn every_preset_model_prepares_render_resources() {
         for id in ["standard", "keyboard", "gamepad"] {
             let resources = prepare_render_resources(&preset_model(id)).expect("render resources");

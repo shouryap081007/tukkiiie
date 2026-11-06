@@ -504,6 +504,8 @@ pub enum RuntimeCommand {
     /// Stops the current motion with this identity. A replayed run is still the
     /// current run, so a later stop for the same ID intentionally targets it.
     StopMotion(MotionId),
+    /// Opens or closes Tuki's optional desk-book prop on the active built-in model.
+    SetBookOpen(bool),
     SetExpression(ExpressionId),
 }
 

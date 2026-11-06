@@ -31,11 +31,18 @@ impl RuntimeRenderer {
         let mut model = Live2dModel::load(committed)
             .map_err(|error| map_live2d_error(error, RuntimeRenderErrorCode::ModelLoadFailed))?;
         let resources = model.render_resources();
+        let book_assets = TukiBookAssets::from_resources(&resources);
         apply_model_input(&mut model, input, self.model_settings)?;
         let mut snapshot = model.update_and_snapshot().map_err(|error| {
             map_live2d_error(error, RuntimeRenderErrorCode::ModelEvaluationFailed)
         })?;
         snapshot.active_keys = resolve_key_overlays(&resources, input.key_presses);
+        if let Some(assets) = &book_assets {
+            snapshot.active_keys.push(bongocat_render::KeyOverlay {
+                asset_id: assets.closed,
+                side: bongocat_render::KeySide::Left,
+            });
+        }
         snapshot.mirror_horizontal = self.model_settings.mirror;
         let model_generation = self.next_model_generation;
         let token = ModelCommitToken {
@@ -58,6 +65,8 @@ impl RuntimeRenderer {
         self.pending = Some(ActiveRenderModel {
             model,
             resources,
+            book_assets,
+            book_animation: TukiBookAnimation::default(),
             model_generation,
             next_frame_number: 1,
             last_evaluated_at: None,
@@ -106,5 +115,17 @@ impl RuntimeRenderer {
 impl RuntimeRenderer {
     pub(crate) fn record_stale_model_commit_feedback(&self) {
         self.producer.record_stale_model_commit_feedback();
+    }
+}
+
+
+impl RuntimeRenderer {
+    pub(crate) fn set_book_open(&mut self, open: bool, now: Duration) {
+        if let Some(active) = &mut self.active {
+            active.book_animation.set_open(open, now);
+        }
+        if let Some(pending) = &mut self.pending {
+            pending.book_animation.set_open(open, now);
+        }
     }
 }

@@ -645,6 +645,15 @@ pub(crate) fn run_worker(receiver: Receiver<CommandEnvelope>, bootstrap: Runtime
                             current.last_command_sequence = Some(sequence);
                         });
                     }
+                    WorkerCommand::Product(RuntimeCommand::SetBookOpen(open)) => {
+                        if let Some(renderer) = &mut renderer {
+                            renderer.set_book_open(open, clock.now());
+                        }
+                        publish(&snapshot, |current| {
+                            current.last_command_failure = None;
+                            current.last_command_sequence = Some(sequence);
+                        });
+                    }
                     WorkerCommand::Product(RuntimeCommand::SetExpression(expression)) => {
                         // Both trigger sources land here — the settings window's
                         // preview button and a shortcut — so this is the one

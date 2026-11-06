@@ -1105,7 +1105,7 @@ dependencies = [
 
 [[package]]
 name = "bongocat-pomodoro"
-version = "1.4.2"
+version = "1.4.3"
 dependencies = [
  "bongocat-plugin-sdk",
  "serde",

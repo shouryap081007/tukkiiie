@@ -142,6 +142,12 @@ impl RuntimeRenderer {
             map_live2d_error(error, RuntimeRenderErrorCode::ModelEvaluationFailed)
         })?;
         snapshot.active_keys = resolve_key_overlays(&active.resources, input.key_presses);
+        if let Some(assets) = &active.book_assets {
+            snapshot.active_keys.push(bongocat_render::KeyOverlay {
+                asset_id: active.book_animation.asset_at(assets, now),
+                side: bongocat_render::KeySide::Left,
+            });
+        }
         snapshot.mirror_horizontal = self.model_settings.mirror;
         self.producer
             .publish(RenderFrame {

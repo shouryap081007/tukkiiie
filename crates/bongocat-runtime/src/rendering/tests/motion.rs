@@ -514,3 +514,49 @@ fn tuki_study_and_break_motions_load_in_all_builtin_models() {
         }
     }
 }
+
+
+#[test]
+fn tuki_book_opens_turns_a_page_and_closes_on_the_desk() {
+    let (bootstrap, _consumer) = RuntimeRenderer::channel();
+    let mut renderer = RuntimeRenderer::start(bootstrap);
+    let token = renderer
+        .prepare(1, &preset_model("standard"), ModelInputSnapshot::default())
+        .expect("prepare standard model");
+    assert!(renderer.commit(token));
+
+    let active = renderer.active.as_mut().expect("active model");
+    let assets = TukiBookAssets::from_resources(&active.resources).expect("Tuki book assets");
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::ZERO),
+        assets.closed
+    );
+
+    active.book_animation.set_open(true, Duration::ZERO);
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::from_millis(50)),
+        assets.closed
+    );
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::from_millis(200)),
+        assets.opening
+    );
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::from_millis(600)),
+        assets.open
+    );
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::from_millis(12_100)),
+        assets.turning
+    );
+
+    active.book_animation.set_open(false, Duration::from_secs(13));
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::from_millis(13_050)),
+        assets.opening
+    );
+    assert_eq!(
+        active.book_animation.asset_at(&assets, Duration::from_millis(13_250)),
+        assets.closed
+    );
+}

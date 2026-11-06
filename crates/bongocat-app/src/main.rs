@@ -307,6 +307,18 @@ fn handle_plugin_model_event(
     if plugin_id != "com.bongocat.pomodoro" {
         return;
     }
+    // The study pose opens Tuki's desk book; break and idle/wave poses close it.
+    // The renderer owns the prop, while the existing plugin motion event carries intent.
+    if let bongocat_plugin_service::PluginModelEvent::StartMotion { group, .. } = &event {
+        let book_open = match group.as_str() {
+            "Tukkiiie_Study" => Some(true),
+            "Tuki_Break" | "CAT_motion" => Some(false),
+            _ => None,
+        };
+        if let Some(open) = book_open {
+            let _ = runtime.send(RuntimeCommand::SetBookOpen(open));
+        }
+    }
     match event {
         bongocat_plugin_service::PluginModelEvent::StartMotion {
             group,
