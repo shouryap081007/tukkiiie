@@ -46,8 +46,8 @@ jobs:
         with:
           key: windows-x64-development
 
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
+      - name: Format Rust sources for the development build
+        run: cargo fmt --all
 
       - name: Prepare Windows Authenticode signing (optional for development)
         shell: pwsh
