@@ -41,6 +41,15 @@ jobs:
       - name: Install the target for the pinned toolchain
         run: rustup target add x86_64-pc-windows-msvc
       - uses: taiki-e/install-action@just
+      - name: Prepare required Windows Authenticode signing
+        shell: pwsh
+        env:
+          BONGOCAT_WINDOWS_SIGNING_THUMBPRINT: ${{ secrets.BONGOCAT_WINDOWS_SIGNING_THUMBPRINT }}
+          BONGOCAT_WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.BONGOCAT_WINDOWS_SIGNING_PFX_BASE64 }}
+          BONGOCAT_WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.BONGOCAT_WINDOWS_SIGNING_PFX_PASSWORD }}
+          BONGOCAT_WINDOWS_SIGNTOOL: ${{ vars.BONGOCAT_WINDOWS_SIGNTOOL }}
+          BONGOCAT_WINDOWS_TIMESTAMP_URL: ${{ vars.BONGOCAT_WINDOWS_TIMESTAMP_URL }}
+        run: .\\tools\\prepare-windows-signing.ps1 -Required
       - name: Check the tag against the single product version source
         shell: bash
         run: |
@@ -90,6 +99,14 @@ jobs:
           Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256 |
             Select-Object -ExpandProperty Hash |
             ForEach-Object { Write-Host "installer sha256=$_" }
+          $authenticode = Get-AuthenticodeSignature -LiteralPath $installer.FullName
+          if ($authenticode.Status -ne "Valid") {
+            throw "Windows release installer is not Authenticode-valid: $($authenticode.Status)"
+          }
+          if ($authenticode.SignerCertificate.Thumbprint -ne $env:BONGOCAT_WINDOWS_SIGNING_THUMBPRINT) {
+            throw "Windows release installer was signed by an unexpected certificate"
+          }
+          Write-Host "verified Authenticode signer: $($authenticode.SignerCertificate.Subject)"
       - name: Verify the signed update assets
         shell: pwsh
         run: |
