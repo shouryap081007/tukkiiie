@@ -86,7 +86,7 @@ use std::{
 
 use cargo_packager::{
     Config, PackageFormat,
-    config::{Binary, MacOsConfig, NSISInstallerMode, NsisConfig, Resource},
+    config::{Binary, MacOsConfig, NSISInstallerMode, NsisConfig, Resource, WindowsConfig},
     sign::SigningConfig,
 };
 use serde::{Deserialize, Serialize};
@@ -189,6 +189,12 @@ const ADHOC_SIGNING_IDENTITY: &str = "-";
 /// real identity through this optional variable. It is a credential injection
 /// point, not a hidden build step: an unset or empty value keeps the ad-hoc identity.
 const MACOS_SIGNING_IDENTITY_VARIABLE: &str = "BONGOCAT_MACOS_SIGNING_IDENTITY";
+/// SHA-1 thumbprint of a trusted Authenticode code-signing certificate in the
+/// Windows runner's CurrentUser\\My certificate store. The private key must be
+/// available to SignTool on that runner; this variable contains no private key.
+const WINDOWS_SIGNING_THUMBPRINT_VARIABLE: &str = "BONGOCAT_WINDOWS_SIGNING_THUMBPRINT";
+/// RFC 3161 timestamp authority used for Windows Authenticode signatures.
+const WINDOWS_TIMESTAMP_URL: &str = "http://timestamp.digicert.com";
 /// Selected through `--environment`; `production` is the release default.
 const BUILD_ENVIRONMENTS: [&str; 2] = ["development", "production"];
 /// Cargo feature that turns the default Development build into Production.
@@ -931,6 +937,18 @@ fn packaging_config(
 
     if target == ReleaseTarget::WindowsX86_64 {
         config.nsis = Some(windows_installer(workspace));
+        if let Some(thumbprint) = windows_signing_thumbprint() {
+            // cargo-packager applies this identity to the Windows application
+            // binaries and the generated installer. The certificate's private
+            // key stays in the runner's certificate provider/store.
+            config.windows = Some(
+                WindowsConfig::new()
+                    .digest_algorithm("SHA256")
+                    .certificate_thumbprint(thumbprint)
+                    .tsp(true)
+                    .timestamp_url(WINDOWS_TIMESTAMP_URL),
+            );
+        }
     }
 
     Ok(config)
@@ -1173,6 +1191,17 @@ fn macos_signing_identity() -> String {
         Ok(identity) if !identity.trim().is_empty() => identity,
         _ => ADHOC_SIGNING_IDENTITY.to_owned(),
     }
+}
+
+/// Thumbprint of the trusted Authenticode certificate provisioned on this runner.
+///
+/// An empty value means this is an unsigned development build. A non-empty value
+/// asks cargo-packager to sign the application binaries and installer.
+fn windows_signing_thumbprint() -> Option<String> {
+    env::var(WINDOWS_SIGNING_THUMBPRINT_VARIABLE)
+        .ok()
+        .map(|value| value.chars().filter(|character| !character.is_ascii_whitespace()).collect())
+        .filter(|value: &String| !value.is_empty())
 }
 
 /// Whether the release pipeline provisioned a key for signing update payloads.
