@@ -222,6 +222,7 @@ impl InputSourceIndicator {
             ]
             .into(),
             state: vec![],
+            model_events: vec![],
         }
     }
 }
