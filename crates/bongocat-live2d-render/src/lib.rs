@@ -48,9 +48,11 @@ pub fn prepare_render_resources(
             height: texture.height,
         })
         .collect();
+    let mut key_assets = load_key_assets(model.root())?;
+    key_assets.extend(load_tuki_book_assets(model.root(), key_assets.len())?);
     Ok(RenderResources {
         textures,
-        key_assets: load_key_assets(model.root())?,
+        key_assets,
         background: load_background_asset(model.root())?,
     })
 }
@@ -490,6 +492,55 @@ const KEY_NUMBERS: [&str; 10] = [
 const KEYPAD_DIGIT_NAMES: [&str; 10] = [
     "Kp1", "Kp2", "Kp3", "Kp4", "Kp5", "Kp6", "Kp7", "Kp8", "Kp9", "Kp0",
 ];
+
+
+/// Optional built-in Tuki desk-book frames. Imported models without these files
+/// simply omit the prop; the renderers already understand the same key-image
+/// texture and quad contract, so no model artwork or Cubism data is changed.
+pub const TUKI_BOOK_ASSET_NAMES: [&str; 4] = [
+    "TukiBookClosed",
+    "TukiBookOpening",
+    "TukiBookOpen",
+    "TukiBookTurning",
+];
+
+fn load_tuki_book_assets(
+    root: &Path,
+    first_id: usize,
+) -> Result<Vec<KeyAsset>, RenderResourceError> {
+    let directory = root.join("resources").join("book");
+    let filenames = [
+        "closed.png",
+        "opening.png",
+        "open.png",
+        "turn.png",
+    ];
+    let paths = filenames
+        .iter()
+        .map(|filename| directory.join(filename))
+        .collect::<Vec<_>>();
+    // Third-party models are not required to include Tuki's prop art.
+    if paths.iter().any(|path| !path.is_file()) {
+        return Ok(Vec::new());
+    }
+
+    let mut assets = Vec::with_capacity(TUKI_BOOK_ASSET_NAMES.len());
+    for (index, (name, path)) in TUKI_BOOK_ASSET_NAMES.iter().zip(paths).enumerate() {
+        let image = ImageReader::open(&path)
+            .map_err(|error| RenderResourceError::new(error.to_string()))?
+            .decode()
+            .map_err(|error| RenderResourceError::new(error.to_string()))?;
+        assets.push(KeyAsset {
+            id: KeyAssetId::new(first_id + index),
+            side: KeySide::Left,
+            name: (*name).to_owned(),
+            path,
+            width: image.width(),
+            height: image.height(),
+        });
+    }
+    Ok(assets)
+}
 
 /// Load the optional background image shipped by a model package.
 pub fn load_background_asset(root: &Path) -> Result<Option<BackgroundAsset>, RenderResourceError> {
