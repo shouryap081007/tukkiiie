@@ -110,6 +110,8 @@ const RESOURCE_DIRECTORY: &str = "resources";
 const MACOS_ICON: &str = "icons/logo-macos.icns";
 /// Repository-relative directory holding the three preset models.
 const MODEL_DIRECTORY: &str = "models";
+/// Bundled Development catalog and platform-specific plugin packages.
+const PLUGIN_DIRECTORY: &str = "plugins";
 /// Resource bundle the macOS guided permission flow resolves its strings from.
 ///
 /// `swift-rs` builds it inside `permission-flow`'s own `OUT_DIR` and never publishes it, while the
@@ -698,6 +700,8 @@ fn package(options: Options) -> Result<Vec<PathBuf>> {
         environment_features(&options.environment),
     )?;
     let models = stage_model_resources(&workspace)?;
+    let development_plugins =
+        stage_development_plugin_resources(&workspace, &options.environment)?;
     // Resolved after `build_application`, which is what produces the Swift bundle.
     let swift_bundle = if target.is_apple() {
         Some(swift_resource_bundle(&workspace, target)?)
@@ -710,6 +714,7 @@ fn package(options: Options) -> Result<Vec<PathBuf>> {
         target,
         &provenance,
         &models,
+        development_plugins.as_deref(),
         swift_bundle.as_deref(),
         &packager_formats(&requested),
     )?;
@@ -884,6 +889,7 @@ fn packaging_config(
     target: ReleaseTarget,
     provenance: &Path,
     models: &Path,
+    development_plugins: Option<&Path>,
     swift_bundle: Option<&Path>,
     formats: &[PackageFormat],
 ) -> Result<Config> {
@@ -922,7 +928,13 @@ fn packaging_config(
     config.out_dir = workspace.join(OUTPUT_DIRECTORY);
     config.target_triple = Some(target.triple().to_owned());
     config.formats = Some(formats.to_vec());
-    config.resources = Some(resources(target, models, provenance, swift_bundle));
+    config.resources = Some(resources(
+        target,
+        models,
+        provenance,
+        development_plugins,
+        swift_bundle,
+    ));
 
     if target.is_apple() {
         let mut macos = MacOsConfig::new();
@@ -989,6 +1001,7 @@ fn resources(
     target: ReleaseTarget,
     models: &Path,
     provenance: &Path,
+    development_plugins: Option<&Path>,
     swift_bundle: Option<&Path>,
 ) -> Vec<Resource> {
     let prefix = if target.is_apple() {
@@ -1006,6 +1019,12 @@ fn resources(
             target: PathBuf::from(format!("{prefix}{PROVENANCE_FILE}")),
         },
     ];
+    if let Some(plugins) = development_plugins {
+        resources.push(Resource::Mapped {
+            src: plugins.display().to_string(),
+            target: PathBuf::from(format!("{prefix}{PLUGIN_DIRECTORY}")),
+        });
+    }
     if let Some(swift_bundle) = swift_bundle {
         resources.push(Resource::Mapped {
             src: swift_bundle.display().to_string(),
@@ -1091,8 +1110,9 @@ fn find_swift_resource_bundle(build_path: &Path) -> Option<PathBuf> {
 
 /// The staging root for packaged resources, under the output directory.
 ///
-/// [`stage_model_resources`] writes the cleaned models below it and
-/// [`discard_staged_resources`] removes it again, so the one location is
+/// [`stage_model_resources`] and [`stage_development_plugin_resources`] write
+/// their cleaned inputs below it, and [`discard_staged_resources`] removes them
+/// again, so the one location is
 /// derived here rather than spelled out twice.
 fn resource_staging_directory(workspace: &Path) -> PathBuf {
     workspace
@@ -1149,6 +1169,42 @@ fn stage_model_resources(workspace: &Path) -> Result<PathBuf> {
         }
     }
     Ok(staged)
+}
+
+/// Stages the Development catalog and its plugin ZIPs for the packaged app.
+///
+/// A local Development run can read the checkout's target directory, but an
+/// installed app cannot: that path belongs to the machine that built it. Copying
+/// the catalog, package archives and icons into the app's resource bundle gives
+/// the installed app a stable executable-relative source. Production continues
+/// to use its separately signed remote catalog.
+fn stage_development_plugin_resources(
+    workspace: &Path,
+    environment: &str,
+) -> Result<Option<PathBuf>> {
+    if environment != "development" {
+        return Ok(None);
+    }
+    let source = workspace
+        .join("target")
+        .join("plugin-dev")
+        .join(PLUGIN_DIRECTORY);
+    let catalog = source.join("catalog.json");
+    if !catalog.is_file() {
+        return failure(format!(
+            "Development packaging requires the plugin catalog at {}; build it with the Windows plugin workflow or bongocat-plugin-packaging catalog dev first",
+            catalog.display()
+        ));
+    }
+    let staged = resource_staging_directory(workspace).join(PLUGIN_DIRECTORY);
+    if staged.exists() {
+        fs::remove_dir_all(&staged)?;
+    }
+    copy_resource_tree(&source, &staged)?;
+    if !staged.join("catalog.json").is_file() {
+        return failure("the Development plugin catalog was not staged");
+    }
+    Ok(Some(staged))
 }
 
 /// File and directory names that must never reach a packaged artifact.
