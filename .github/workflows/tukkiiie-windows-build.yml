@@ -45,6 +45,17 @@ jobs:
         with:
           key: windows-x64-development
 
+      - name: Build Windows plugin packages
+        run: cargo run --locked -p bongocat-plugin-packaging -- catalog dev --root . --target x86_64-pc-windows-msvc --output target/plugin-dev/plugins
+
+      - name: Upload Windows plugin packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: tukkiiie-windows-x64-plugins
+          path: target/plugin-dev/plugins
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Build unsigned development installer
         run: just build --environment development --formats nsis
 
@@ -70,13 +81,3 @@ jobs:
           path: target/package/*.exe
           if-no-files-found: error
           retention-days: 7 
-      - name: Build Windows plugin packages
-        run: cargo run --locked -p bongocat-plugin-packaging -- catalog dev --root . --target x86_64-pc-windows-msvc --output target/plugin-dev/plugins
-
-      - name: Upload Windows plugin packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: tukkiiie-windows-x64-plugins
-          path: target/plugin-dev/plugins
-          if-no-files-found: error
-          retention-days: 7
