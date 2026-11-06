@@ -37,8 +37,10 @@ pub(crate) fn source() -> PluginSource {
 fn development_plugin_directory() -> PathBuf {
     if let Some(path) = std::env::var_os(DEVELOPMENT_DIRECTORY_VARIABLE)
         .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        && path.join("catalog.json").is_file()
     {
-        return PathBuf::from(path);
+        return path;
     }
 
     if let Ok(executable) = std::env::current_exe()
