@@ -158,10 +158,33 @@ pub fn build_target(root: &Path, target: Platform, output: &Path) -> Result<Vec<
             .args(["--bin", &source.manifest.entry, "--message-format=json"])
             .output()?;
         if !build.status.success() {
+            // Cargo's JSON compiler diagnostics are written to stdout when
+            // --message-format=json is enabled. Preserve them in the packaging
+            // error so CI shows the actual compiler failure instead of only
+            // naming the plugin that failed.
+            let compiler_errors = build
+                .stdout
+                .split(|byte| *byte == b'\\n')
+                .filter_map(|line| serde_json::from_slice::<serde_json::Value>(line).ok())
+                .filter(|message| message["reason"] == "compiler-message")
+                .filter(|message| message["message"]["level"] == "error")
+                .filter_map(|message| {
+                    message["message"]["rendered"]
+                        .as_str()
+                        .map(str::to_owned)
+                })
+                .collect::<Vec<_>>()
+                .join("\\n");
+            let diagnostics = if compiler_errors.trim().is_empty() {
+                String::from_utf8_lossy(&build.stderr).into_owned()
+            } else {
+                compiler_errors
+            };
             return Err(Error::Invalid(format!(
-                "failed to build {} for {}",
+                "failed to build {} for {}:\\n{}",
                 source.manifest.id,
-                target.key()
+                target.key(),
+                diagnostics.trim()
             )));
         }
         let executable = executable_from_messages(&build.stdout, &source.manifest.entry)
