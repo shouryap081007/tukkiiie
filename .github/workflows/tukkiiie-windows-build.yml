@@ -35,6 +35,7 @@ jobs:
       - name: Install the pinned Rust toolchain
         uses: dtolnay/rust-toolchain@1.97.1
         with:
+          components: rustfmt
           targets: x86_64-pc-windows-msvc
 
       - name: Install Just
@@ -44,6 +45,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: windows-x64-development
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
 
       - name: Prepare Windows Authenticode signing (optional for development)
         shell: pwsh
@@ -66,7 +70,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Build unsigned development installer
+      - name: Build development installer
         run: just build --environment development --formats nsis
 
       - name: Test plugin HUD service
