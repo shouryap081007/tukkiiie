@@ -491,3 +491,26 @@ fn overlapping_standard_model_groups_can_replay_after_terminal_poses_are_held() 
         );
     }
 }
+
+
+#[test]
+fn tuki_study_and_break_motions_load_in_all_builtin_models() {
+    for model_name in ["standard", "keyboard", "gamepad"] {
+        for group in ["Tukkiiie_Study", "Tuki_Break"] {
+            let (bootstrap, _consumer) = RuntimeRenderer::channel();
+            let mut renderer = RuntimeRenderer::start(bootstrap);
+            let token = renderer
+                .prepare(1, &preset_model(model_name), ModelInputSnapshot::default())
+                .expect("prepare built-in model");
+            assert!(renderer.commit(token));
+
+            let motion = MotionId::new(group, 0).expect("Tuki motion identity");
+            renderer
+                .start_motion(&motion, Duration::ZERO, true)
+                .expect("built-in model contains the Tuki motion");
+            renderer
+                .evaluate(ModelInputSnapshot::default(), Duration::from_millis(500))
+                .expect("Tuki pose evaluates");
+        }
+    }
+}

@@ -3,12 +3,21 @@
     "id": "com.bongocat.pomodoro",
     "name": "Tuki Focus",
     "description": "A local-first study timer with automatic breaks and daily study summaries.",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "app_versions": ">=2.3.1",
     "protocol_version": 1,
     "entry": "bongocat-pomodoro",
-    "icon": { "type": "local_image", "value": "resources/icon.png" },
-    "capabilities": ["model_ui", "configuration", "persistent_state", "localized_views_v1", "icon_text_v1"],
+    "icon": {
+      "type": "local_image",
+      "value": "resources/icon.png"
+    },
+    "capabilities": [
+      "model_ui",
+      "configuration",
+      "persistent_state",
+      "localized_views_v1",
+      "icon_text_v1"
+    ],
     "localizations": {
       "zh-CN": {
         "name": "Tuki 专注助手",

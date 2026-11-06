@@ -14,8 +14,6 @@ use bongocat_render::RenderFrame;
 use std::sync::Arc;
 use std::time::Duration;
 
-const BLINK_PERIOD: Duration = Duration::from_secs(5);
-const BLINK_CLOSED_DURATION: Duration = Duration::from_millis(180);
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct RenderEvaluation {

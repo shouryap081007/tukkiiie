@@ -234,7 +234,7 @@ impl Pomodoro {
         self.notice = Some(Notice::StudyComplete);
         self.show_bubble(self.copy().bubble_study_complete);
         self.emit_stop_study_motion();
-        self.emit_wave();
+        self.emit_break_motion();
     }
     fn finish_break(&mut self) {
         self.phase = Phase::Study;
@@ -243,7 +243,22 @@ impl Pomodoro {
         self.started = false;
         self.notice = Some(Notice::BreakComplete);
         self.show_bubble(self.copy().bubble_break_complete);
+        self.emit_stop_break_motion();
         self.emit_wave();
+    }
+
+    fn emit_phase_motion(&mut self) {
+        match self.phase {
+            Phase::Study => self.emit_study_motion(),
+            Phase::Break => self.emit_break_motion(),
+        }
+    }
+
+    fn emit_stop_phase_motion(&mut self) {
+        match self.phase {
+            Phase::Study => self.emit_stop_study_motion(),
+            Phase::Break => self.emit_stop_break_motion(),
+        }
     }
 
     fn emit_study_motion(&mut self) {
@@ -257,6 +272,21 @@ impl Pomodoro {
     fn emit_stop_study_motion(&mut self) {
         self.model_events.push(PluginModelEvent::StopMotion {
             group: "Tukkiiie_Study".into(),
+            index: 0,
+        });
+    }
+
+    fn emit_break_motion(&mut self) {
+        self.model_events.push(PluginModelEvent::StartMotion {
+            group: "Tuki_Break".into(),
+            index: 0,
+            looping: true,
+        });
+    }
+
+    fn emit_stop_break_motion(&mut self) {
+        self.model_events.push(PluginModelEvent::StopMotion {
+            group: "Tuki_Break".into(),
             index: 0,
         });
     }
@@ -411,13 +441,15 @@ impl Plugin for Pomodoro {
                         self.session_day = Some(local_day_key());
                     }
                     self.running = !self.running;
-                    if self.phase == Phase::Study {
-                        if self.running {
-                            self.emit_study_motion();
-                            if !was_running { self.show_bubble(self.copy().bubble_study_started); }
-                        } else {
-                            self.emit_stop_study_motion();
-                            if was_running { self.show_bubble(self.copy().bubble_paused); }
+                    if self.running {
+                        self.emit_phase_motion();
+                        if !was_running && self.phase == Phase::Study {
+                            self.show_bubble(self.copy().bubble_study_started);
+                        }
+                    } else {
+                        self.emit_stop_phase_motion();
+                        if was_running && self.phase == Phase::Study {
+                            self.show_bubble(self.copy().bubble_paused);
                         }
                     }
                     self.started = true;
@@ -431,8 +463,8 @@ impl Plugin for Pomodoro {
                         self.session_day = Some(local_day_key());
                     }
                     self.running = true;
+                    self.emit_phase_motion();
                     if self.phase == Phase::Study {
-                        self.emit_study_motion();
                         self.show_bubble(self.copy().bubble_study_started);
                     }
                     self.started = true;
@@ -455,20 +487,28 @@ impl Plugin for Pomodoro {
             HostMessage::Preview { .. } => return Err("Unknown study timer preview".into()),
             HostMessage::Locale { locale } => self.locale = Some(locale),
             HostMessage::Pause | HostMessage::Stop => {
-                if self.phase == Phase::Study && self.running {
-                    self.emit_stop_study_motion();
+                if self.running {
+                    self.emit_stop_phase_motion();
                 }
                 self.running = false;
                 self.last_tick = None;
             }
             HostMessage::Resume => {
                 self.running = self.remaining_ms > 0;
-                if self.phase == Phase::Study && self.running {
-                    self.emit_study_motion();
+                if self.running {
+                    self.emit_phase_motion();
                 }
                 self.last_tick = None;
             }
-            HostMessage::Reset => { *self = Self { locale: self.locale.take(), ..Default::default() }; }
+            HostMessage::Reset => {
+                if self.running {
+                    self.emit_stop_phase_motion();
+                }
+                let locale = self.locale.take();
+                let model_events = std::mem::take(&mut self.model_events);
+                *self = Self { locale, ..Default::default() };
+                self.model_events = model_events;
+            }
             HostMessage::Handshake { .. } => return Err("Handshake belongs to SDK".into()),
         }
         self.output()
@@ -497,7 +537,7 @@ mod tests {
                 group: "Tukkiiie_Study".into(), index: 0,
             },
             PluginModelEvent::StartMotion {
-                group: "CAT_motion".into(), index: 1, looping: false,
+                group: "Tuki_Break".into(), index: 0, looping: true,
             },
         ]);
         assert_eq!(p.phase, Phase::Break);
@@ -514,9 +554,14 @@ mod tests {
         let mut p = Pomodoro { phase: Phase::Break, remaining_ms: 5 * 60_000, running: true,
             started: true, last_tick: Some(0), ..Default::default() };
         let output = tick(&mut p, 5 * 60_000);
-        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
-            group: "CAT_motion".into(), index: 1, looping: false,
-        }]);
+        assert_eq!(output.model_events, vec![
+            PluginModelEvent::StopMotion {
+                group: "Tuki_Break".into(), index: 0,
+            },
+            PluginModelEvent::StartMotion {
+                group: "CAT_motion".into(), index: 1, looping: false,
+            },
+        ]);
         assert_eq!(p.phase, Phase::Study);
         assert!(!output.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { icon: StatusIcon::Rgba(_), .. })));
         assert!(!p.running);
@@ -550,6 +595,31 @@ mod tests {
             node, UiNode::IconText { icon: StatusIcon::Badge(_), .. }
         )));
         assert!(!p.running);
+    }
+
+    #[test]
+    fn break_start_pause_and_resume_drive_the_relaxed_tuki_pose() {
+        let mut p = Pomodoro {
+            phase: Phase::Break,
+            remaining_ms: 5 * 60_000,
+            started: true,
+            ..Default::default()
+        };
+
+        let start = action(&mut p, "toggle");
+        assert_eq!(start.model_events, vec![PluginModelEvent::StartMotion {
+            group: "Tuki_Break".into(), index: 0, looping: true,
+        }]);
+
+        let pause = action(&mut p, "toggle");
+        assert_eq!(pause.model_events, vec![PluginModelEvent::StopMotion {
+            group: "Tuki_Break".into(), index: 0,
+        }]);
+
+        let resume = action(&mut p, "toggle");
+        assert_eq!(resume.model_events, vec![PluginModelEvent::StartMotion {
+            group: "Tuki_Break".into(), index: 0, looping: true,
+        }]);
     }
 
     #[test]
