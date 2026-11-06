@@ -46,7 +46,7 @@ English | [简体中文](README.zh-CN.md)
   </tbody>
 </table>
 
-BongoCat is a desktop companion for Windows and macOS. A Live2D cat lives on your screen, its eyes
+Tuki is a desktop companion for Windows and macOS. A Live2D cat lives on your screen, its eyes
 and paws follow your mouse, and it reacts to every key, mouse button and gamepad button you press.
 Bring your own models, move the window wherever you like, and it stays out of your way until you
 want it again.

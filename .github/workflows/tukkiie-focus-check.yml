@@ -1,4 +1,4 @@
-name: Tukkiiie focus plugin checks
+name: Tuki focus plugin checks
 
 on:
   push:
@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   test:
-    name: Format and test Tukkiiie study features
+    name: Format and test Tuki study features
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

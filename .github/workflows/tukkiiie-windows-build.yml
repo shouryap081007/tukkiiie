@@ -1,4 +1,4 @@
-name: Tukkiiie Windows development build
+name: Tuki Windows development build
 
 on:
   push:
@@ -65,7 +65,7 @@ jobs:
       - name: Upload Windows plugin packages
         uses: actions/upload-artifact@v4
         with:
-          name: tukkiiie-windows-x64-plugins
+          name: tuki-windows-x64-plugins
           path: target/plugin-dev/plugins
           if-no-files-found: error
           retention-days: 7
@@ -104,7 +104,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: tukkiiie-windows-x64-development
+          name: tuki-windows-x64-development
           path: target/package/*.exe
           if-no-files-found: error
           retention-days: 7 

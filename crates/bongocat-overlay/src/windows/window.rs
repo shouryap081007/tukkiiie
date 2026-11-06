@@ -147,7 +147,7 @@ impl OverlayWindow {
             CreateWindowExW(
                 extended,
                 WINDOW_CLASS,
-                w!("BongoCat"),
+                w!("Tuki"),
                 if options.window_mode {
                     WS_OVERLAPPEDWINDOW & !WS_MAXIMIZEBOX
                 } else {

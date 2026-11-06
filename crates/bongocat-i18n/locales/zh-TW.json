@@ -2,7 +2,7 @@
   "_version": 1,
   "navigation": {
     "settings": {
-      "title": "BongoCat 設定"
+      "title": "Tuki 設定"
     },
     "appearance": {
       "title": "外觀與語言"
@@ -34,9 +34,9 @@
     }
   },
   "system_menu": {
-    "title": "BongoCat",
+    "title": "Tuki",
     "open_settings": "設定",
-    "quit": "結束 BongoCat"
+    "quit": "結束 Tuki"
   },
   "application_menu": {
     "file": "檔案",
@@ -46,7 +46,7 @@
     "close": "關閉",
     "minimize": "縮到最小",
     "zoom": "縮放",
-    "hide": "隱藏 BongoCat",
+    "hide": "隱藏 Tuki",
     "hide_others": "隱藏其他",
     "show_all": "全部顯示",
     "undo": "還原",
@@ -60,12 +60,12 @@
     "later": "稍後設定",
     "input_monitoring": {
       "title": "需要「輸入監控」權限",
-      "description": "BongoCat 需要「輸入監控」權限，才能正常接收鍵盤與滑鼠輸入。",
+      "description": "Tuki 需要「輸入監控」權限，才能正常接收鍵盤與滑鼠輸入。",
       "open_settings": "開啟系統設定"
     },
     "administrator": {
       "title": "建議以系統管理員身分執行",
-      "description": "BongoCat 需要系統管理員權限，才能在其他應用程式以系統管理員權限執行時繼續接收鍵盤與滑鼠輸入。\n\n設定方式：按右鍵 BongoCat → 內容 → 相容性 → 勾選「以系統管理員身分執行此程式」。",
+      "description": "Tuki 需要系統管理員權限，才能在其他應用程式以系統管理員權限執行時繼續接收鍵盤與滑鼠輸入。\n\n設定方式：按右鍵 Tuki → 內容 → 相容性 → 勾選「以系統管理員身分執行此程式」。",
       "open_program_folder": "結束並前往設定"
     }
   },
@@ -184,24 +184,24 @@
   },
   "update": {
     "window": {
-      "title": "BongoCat 更新"
+      "title": "Tuki 更新"
     },
     "heading": {
-      "title": "更新 BongoCat"
+      "title": "更新 Tuki"
     },
     "current_version": "目前版本 %{version}",
     "status": {
-      "idle": "檢查 BongoCat 是否有新版本。",
+      "idle": "檢查 Tuki 是否有新版本。",
       "checking": "正在檢查更新…",
-      "up_to_date": "BongoCat %{version} 已是最新版本。",
-      "available": "BongoCat %{version} 可以安裝。",
+      "up_to_date": "Tuki %{version} 已是最新版本。",
+      "available": "Tuki %{version} 可以安裝。",
       "downloading": "正在下載… %{percent}%",
       "downloading_unknown": "正在下載…",
-      "downloading_detail": "BongoCat %{version} · %{downloaded} / %{total}",
-      "verifying": "正在驗證已下載的 BongoCat %{version}…",
-      "installing": "正在安裝 BongoCat %{version}…",
-      "installed_restarting": "BongoCat %{version} 已安裝，正在重新啟動…",
-      "installed_relaunching": "BongoCat %{version} 已安裝，安裝程式將立即重新啟動它。"
+      "downloading_detail": "Tuki %{version} · %{downloaded} / %{total}",
+      "verifying": "正在驗證已下載的 Tuki %{version}…",
+      "installing": "正在安裝 Tuki %{version}…",
+      "installed_restarting": "Tuki %{version} 已安裝，正在重新啟動…",
+      "installed_relaunching": "Tuki %{version} 已安裝，安裝程式將立即重新啟動它。"
     },
     "notes": {
       "title": "更新內容"
@@ -215,10 +215,10 @@
     },
     "error": {
       "stage": {
-        "check": "無法檢查 BongoCat %{version} 是否有新版本。",
-        "download": "無法下載 BongoCat %{version}。",
-        "verify": "無法驗證已下載的 BongoCat %{version}。",
-        "install": "無法安裝 BongoCat %{version}。"
+        "check": "無法檢查 Tuki %{version} 是否有新版本。",
+        "download": "無法下載 Tuki %{version}。",
+        "verify": "無法驗證已下載的 Tuki %{version}。",
+        "install": "無法安裝 Tuki %{version}。"
       },
       "not_configured": "目前版本未開啟更新功能。",
       "environment_disabled": "目前版本無法安裝更新。",
@@ -230,9 +230,9 @@
       "checksum_mismatch": "下載的更新套件已損毀或不完整。",
       "signature_invalid": "無法驗證該更新套件，已放棄安裝。",
       "archive_invalid": "無法讀取已下載的更新套件。",
-      "install_path_not_writable": "無法在目前位置更新 BongoCat。",
-      "install_failed": "無法更新 BongoCat。",
-      "restart_failed": "無法重新啟動 BongoCat，請手動啟動以使用新版本。",
+      "install_path_not_writable": "無法在目前位置更新 Tuki。",
+      "install_failed": "無法更新 Tuki。",
+      "restart_failed": "無法重新啟動 Tuki，請手動啟動以使用新版本。",
       "internal": "更新因未預期原因失敗。"
     },
     "unavailable": {
@@ -313,7 +313,7 @@
       "model_already_installed": "該模型已安裝",
       "model_import_invalid_package": "模型包無效",
       "model_import_drop_invalid": "請一次拖曳一個有效的模型資料夾",
-      "model_import_source_invalid": "所選資料夾包含 BongoCat 的模型儲存位置；請改選單一模型資料夾。",
+      "model_import_source_invalid": "所選資料夾包含 Tuki 的模型儲存位置；請改選單一模型資料夾。",
       "model_import_source_changed": "模型來源在匯入期間發生變化",
       "model_import_source_unsupported": "模型來源中包含不支援的檔案",
       "model_import_cancelled": "模型匯入已取消",
@@ -331,7 +331,7 @@
       "dock_icon_update_failed": "無法更新 Dock 圖示。",
       "window_hide_failed": "無法隱藏設定視窗",
       "window_layout_save_failed": "無法儲存視窗版面配置",
-      "application_shutdown_failed": "BongoCat 未能完全關閉"
+      "application_shutdown_failed": "Tuki 未能完全關閉"
     }
   },
   "settings": {
@@ -556,7 +556,7 @@
         "checking": "正在檢查登入項目…",
         "unavailable": "暫時無法取得狀態；點選開關重試",
         "stale": "應用程式位置已變更；重新切換一次開關即可修復",
-        "requires_approval": "請在系統設定中核准 BongoCat",
+        "requires_approval": "請在系統設定中核准 Tuki",
         "not_found": "登入項目缺失；重新切換一次開關即可修復",
         "unsupported_platform": "目前系統不支援開機自動啟動",
         "unsupported_os": "目前作業系統不支援開機自動啟動",

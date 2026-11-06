@@ -107,7 +107,7 @@ impl NativeOverlay {
             NSBackingStoreType::Buffered,
             false,
         );
-        panel.setTitle(&objc2_foundation::NSString::from_str("BongoCat"));
+        panel.setTitle(&objc2_foundation::NSString::from_str("Tuki"));
         panel.setOpaque(false);
         panel.setHasShadow(false);
         panel.setAnimationBehavior(NSWindowAnimationBehavior::None);

@@ -1,9 +1,9 @@
 {
   "metadata": {
     "id": "com.bongocat.pomodoro",
-    "name": "Tukkiiie Focus",
+    "name": "Tuki Focus",
     "description": "A local-first study timer with automatic breaks and daily study summaries.",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "app_versions": ">=2.3.1",
     "protocol_version": 1,
     "entry": "bongocat-pomodoro",
@@ -11,7 +11,7 @@
     "capabilities": ["model_ui", "configuration", "persistent_state", "localized_views_v1", "icon_text_v1"],
     "localizations": {
       "zh-CN": {
-        "name": "Tukkiiie 专注助手",
+        "name": "Tuki 专注助手",
         "description": "本地学习计时器，支持自动休息和每日学习统计。"
       }
     }

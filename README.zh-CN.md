@@ -46,7 +46,7 @@
   </tbody>
 </table>
 
-BongoCat 是一款面向 Windows 和 macOS 的桌面陪伴应用。一只 Live2D 小猫住在你的屏幕上，眼神和爪子会跟着鼠标移动，你按下的每个按键、鼠标键和手柄按键它都会有反应。你可以换上自己的模型，把窗口拖到任何位置，需要的时候它就安静地待在一边。
+Tuki 是一款面向 Windows 和 macOS 的桌面陪伴应用。一只 Live2D 小猫住在你的屏幕上，眼神和爪子会跟着鼠标移动，你按下的每个按键、鼠标键和手柄按键它都会有反应。你可以换上自己的模型，把窗口拖到任何位置，需要的时候它就安静地待在一边。
 
 灵感来自 [MMmmmoko](https://github.com/MMmmmoko) 的 [Bongo-Cat-Mver](https://github.com/MMmmmoko/Bongo-Cat-Mver)。
 
