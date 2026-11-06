@@ -106,6 +106,17 @@ impl HudRenderer {
         if width > MAX_HUD_DIMENSION || height > MAX_HUD_DIMENSION {
             return Err(HudRendererError::new("panel exceeds the maximum size"));
         }
+        if let Some(text) = crate::bubble::bubble_text(view) {
+            let bubble = crate::bubble::bubble_layout(&self.font, text, viewport_width as f32);
+            let mut canvas = Canvas::new(width, height);
+            self.paint_bubble(&mut canvas, &bubble, scale);
+            return Ok(HudBitmap {
+                width,
+                height,
+                pixels: canvas.into_pixels(),
+                origin: layout.panel,
+            });
+        }
         let mut canvas = Canvas::new(width, height);
         // Everything is painted in device pixels, so the panel's own logical
         // origin is the offset that turns a laid-out rectangle into a bitmap
@@ -133,6 +144,36 @@ impl HudRenderer {
         })
     }
 
+    /// Paint a speech bubble: a soft rounded body, two droplets trailing toward
+    /// the cat, and the wrapped text.
+    fn paint_bubble(&self, canvas: &mut Canvas, bubble: &crate::bubble::BubbleLayout, scale: f32) {
+        let body = HudRect::new(
+            0.0,
+            0.0,
+            bubble.body.width * scale,
+            bubble.body.height * scale,
+        );
+        canvas.fill_rounded_rect(body, crate::bubble::BUBBLE_RADIUS * scale, DEFAULT_PANEL_FILL);
+        for (cx, cy, radius) in crate::bubble::droplets(bubble) {
+            let drop = HudRect::new(
+                (cx - radius) * scale,
+                (cy - radius) * scale,
+                radius * 2.0 * scale,
+                radius * 2.0 * scale,
+            );
+            canvas.fill_rounded_rect(drop, radius * scale, DEFAULT_PANEL_FILL);
+        }
+        for (index, line) in bubble.lines.iter().enumerate() {
+            canvas.draw_text(
+                &self.font,
+                line,
+                crate::bubble::BUBBLE_PADDING_X * scale,
+                (crate::bubble::BUBBLE_PADDING_Y + index as f32 * bubble.line_height) * scale,
+                crate::bubble::BUBBLE_TEXT_SIZE * scale,
+                DEFAULT_TEXT_COLOR,
+            );
+        }
+    }
     fn paint_node(
         &self,
         canvas: &mut Canvas,

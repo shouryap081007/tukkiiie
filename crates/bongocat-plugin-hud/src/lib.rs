@@ -25,7 +25,7 @@
 
 use bongocat_plugin_sdk::PluginView;
 use fontdue::{Font, FontSettings};
-
+mod bubble;
 mod font;
 mod layer;
 mod layout;
@@ -238,6 +238,20 @@ pub struct HudLayout {
 pub fn layout(view: &PluginView, viewport: HudRect, font: &HudFont) -> HudLayout {
     if view.nodes.is_empty() {
         return HudLayout::default();
+    }
+    // A speech bubble sizes itself from its wrapped text and is never interactive.
+    if let Some(text) = bubble::bubble_text(view) {
+        let bubble = bubble::bubble_layout(font, text, viewport.width);
+        let panel = layout::anchored_rect_with_padding(
+            view.anchor,
+            viewport,
+            (bubble.width, bubble.height),
+            0.0,
+        );
+        return HudLayout {
+            panel,
+            interactive: Vec::new(),
+        };
     }
     let size = layout::measure_view(view, font);
     let panel = layout::anchored_rect_with_padding(

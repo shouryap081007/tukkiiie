@@ -1119,10 +1119,16 @@ impl Worker {
             .list_plugins()
             .into_iter()
             .filter(|(_, state)| *state == PluginState::Enabled)
-            .filter_map(|(metadata, _)| {
-                let output = self.manager.plugin_output(&metadata.id)?;
-                let view = overlay_model_view(&metadata.id, output.model.clone())?;
-                Some(PluginHudFrame::new(metadata.id, view))
+            .flat_map(|(metadata, _)| {
+                let views = self
+                    .manager
+                    .plugin_output(&metadata.id)
+                    .map(|output| overlay_model_views(&metadata.id, output.model.clone()))
+                    .unwrap_or_default();
+                views
+                    .into_iter()
+                    .map(|view| PluginHudFrame::new(metadata.id.clone(), view))
+                    .collect::<Vec<_>>()
             })
             .collect()
     }
@@ -1141,6 +1147,46 @@ fn overlay_model_view(
             .retain(|node| matches!(node, UiNode::IconText { .. }));
     }
     (!view.nodes.is_empty()).then_some(view)
+}
+
+/// The panels one plugin draws in the model window. The speech bubble (a lone
+/// `...` badge row) gets its own top-left panel; everything else keeps the
+/// plugin's anchor.
+fn overlay_model_views(
+    plugin_id: &str,
+    view: bongocat_plugin_sdk::PluginView,
+) -> Vec<bongocat_plugin_sdk::PluginView> {
+    let Some(view) = overlay_model_view(plugin_id, view) else {
+        return Vec::new();
+    };
+    if plugin_id != "com.bongocat.pomodoro" {
+        return vec![view];
+    }
+    let anchor = view.anchor;
+    let (bubbles, others): (Vec<UiNode>, Vec<UiNode>) =
+        view.nodes.into_iter().partition(|node| {
+            matches!(
+                node,
+                UiNode::IconText {
+                    icon: bongocat_plugin_sdk::StatusIcon::Badge(badge),
+                    ..
+                } if badge.as_str() == "..."
+            )
+        });
+    let mut views = Vec::new();
+    if !others.is_empty() {
+        views.push(bongocat_plugin_sdk::PluginView {
+            anchor,
+            nodes: others,
+        });
+    }
+    if !bubbles.is_empty() {
+        views.push(bongocat_plugin_sdk::PluginView {
+            anchor: bongocat_plugin_sdk::Anchor::TopLeft,
+            nodes: bubbles,
+        });
+    }
+    views
 }
 
 fn nodes<T: Clone>(
