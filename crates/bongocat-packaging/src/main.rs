@@ -946,7 +946,10 @@ fn packaging_config(
                     .digest_algorithm("SHA256")
                     .certificate_thumbprint(thumbprint)
                     .tsp(true)
-                    .timestamp_url(WINDOWS_TIMESTAMP_URL),
+                    .timestamp_url(
+                        env::var("BONGOCAT_WINDOWS_TIMESTAMP_URL")
+                            .unwrap_or_else(|_| WINDOWS_TIMESTAMP_URL.to_owned()),
+                    ),
             );
         }
     }
