@@ -3,7 +3,7 @@ use bongocat_plugin_sdk::{PROTOCOL_VERSION, PluginIcon};
 use semver::{Version, VersionReq};
 use std::{
     collections::BTreeSet,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -189,11 +189,82 @@ pub fn build_target(root: &Path, target: Platform, output: &Path) -> Result<Vec<
         }
         let executable = executable_from_messages(&build.stdout, &source.manifest.entry)
             .ok_or_else(|| Error::Invalid("Cargo did not report a plugin executable".into()))?;
+        sign_windows_executable(target, &executable)?;
         let package = crate::archive::write_package(&source, target, &executable, output)?;
         crate::archive::validate_package(&fs::read(&package)?, &source.manifest, target)?;
         packages.push(package);
     }
     Ok(packages)
+}
+
+/// Sign a Windows plugin executable before it is placed inside its package.
+///
+/// The thumbprint identifies a publicly trusted code-signing certificate whose
+/// private key has already been provisioned into the Windows runner's certificate
+/// store or signing provider. No certificate or private key is stored in the
+/// repository. Builds without a configured thumbprint remain development-only
+/// and unsigned.
+fn sign_windows_executable(target: Platform, executable: &Path) -> Result<()> {
+    if target != Platform::WindowsX86_64 {
+        return Ok(());
+    }
+
+    let Some(thumbprint) = env::var("BONGOCAT_WINDOWS_SIGNING_THUMBPRINT")
+        .ok()
+        .map(|value| value.chars().filter(|character| !character.is_ascii_whitespace()).collect::<String>())
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(());
+    };
+
+    if !cfg!(target_os = "windows") {
+        return Err(Error::Invalid(
+            "Windows Authenticode signing requires a Windows runner".into(),
+        ));
+    }
+
+    let sign_tool = env::var_os("BONGOCAT_WINDOWS_SIGNTOOL")
+        .unwrap_or_else(|| "signtool.exe".into());
+    let timestamp_url = env::var("BONGOCAT_WINDOWS_TIMESTAMP_URL")
+        .unwrap_or_else(|_| "http://timestamp.digicert.com".into());
+
+    let sign = Command::new(&sign_tool)
+        .args([
+            "sign",
+            "/sha1",
+            &thumbprint,
+            "/fd",
+            "SHA256",
+            "/tr",
+            &timestamp_url,
+            "/td",
+            "SHA256",
+        ])
+        .arg(executable)
+        .output()?;
+    if !sign.status.success() {
+        return Err(Error::Invalid(format!(
+            "Authenticode signing failed for {}: {}{}",
+            executable.display(),
+            String::from_utf8_lossy(&sign.stdout),
+            String::from_utf8_lossy(&sign.stderr)
+        )));
+    }
+
+    let verify = Command::new(&sign_tool)
+        .args(["verify", "/pa", "/all"])
+        .arg(executable)
+        .output()?;
+    if !verify.status.success() {
+        return Err(Error::Invalid(format!(
+            "Authenticode verification failed for {}: {}{}",
+            executable.display(),
+            String::from_utf8_lossy(&verify.stdout),
+            String::from_utf8_lossy(&verify.stderr)
+        )));
+    }
+
+    Ok(())
 }
 
 fn executable_from_messages(bytes: &[u8], entry: &str) -> Option<PathBuf> {
