@@ -17,19 +17,61 @@ struct Copy {
     ended_early: &'static str, bubble_study_started: &'static str, bubble_paused: &'static str,
     bubble_mid_study: &'static str, bubble_study_complete: &'static str, bubble_break_complete: &'static str,
     bubble_ended_early: &'static str, today: &'static str, sessions: &'static str, minutes: &'static str,
+    // Extra lines per bubble kind, in the order of `Line`.
+    extra_lines: [&'static [&'static str]; 6],
 }
+const NO_LINES: &[&str] = &[];
+const STARTED_LINES: &[&str] = &[
+    "Timer's running. So is your excuse list.",
+    "Staring at the book doesn't count. I checked.",
+    "Chapter vs you. I'm betting on the chapter.",
+    "Focus loading... brain not found. Typical.",
+    "Fine, study. I'll judge from up here.",
+    "Physics won't solve itself. I asked.",
+];
+const PAUSED_LINES: &[&str] = &[
+    "Pause = phone. I can smell it. Put it down.",
+    "Break already? You barely warmed the chair.",
+    "Pausing? The book waits. I just judge.",
+    "Five minutes means five. Not a lifestyle.",
+];
+const MID_LINES: &[&str] = &[
+    "Half done. The other half is also yours.",
+    "Halfway! Don't celebrate, don't scroll.",
+    "Halfway. Your future self is mildly impressed.",
+    "Midpoint reached. Resist the snack urge.",
+];
+const DONE_LINES: &[&str] = &[
+    "Done! Who are you and where's the lazy you?",
+    "Session complete. I'm almost impressed.",
+    "Productive?! Disgusting. Take your break.",
+    "Timer done. Go stretch, you gremlin.",
+];
+const BREAK_OVER_LINES: &[&str] = &[
+    "Break over. Back to the book, snack goblin.",
+    "Time's up. Yes, even the scrolling.",
+    "Break ended. Sit. Study. Good human.",
+    "Break's over. Chop chop, human.",
+];
+const EARLY_LINES: &[&str] = &[
+    "Ended early. I'll pretend I didn't see that.",
+    "Quitter! Kidding. Mostly. Come back.",
+    "That was short. Even my naps are longer.",
+    "Early exit noted. Judgement pending.",
+];
 const ENGLISH: Copy = Copy {
     study: "Study", break_label: "Break", studying: "Studying", start: "Start", pause: "Pause", restart: "Restart",
     finish_early: "Finish early", study_minutes: "Study minutes", break_minutes: "Break minutes",
     study_complete: "Study complete. Break time!", break_complete: "Break over. Ready when you are.",
     ended_early: "Session ended early.",
-    bubble_study_started: "Back to work, professional procrastinator.",
-    bubble_paused: "Already tired? The chapter barely noticed.",
+    bubble_study_started: "Book open, phone away. Yes, you. Go.",
+    bubble_paused: "Paused already? Bold strategy, let's see it.",
     bubble_mid_study: "Halfway there. Don't negotiate with the timer.",
-    bubble_study_complete: "Look at you, academically suspicious. Break time!",
-    bubble_break_complete: "Break's over. Your backlog misses you.",
-    bubble_ended_early: "Leaving already? The backlog says thanks.",
+    bubble_study_complete: "Done! Suspiciously responsible of you. Break!",
+    bubble_break_complete: "Break's over. The book missed you. I didn't.",
+    bubble_ended_early: "Leaving early? Bold. Dramatic. Unwise.",
     today: "Today", sessions: "sessions", minutes: "min",
+    extra_lines: [STARTED_LINES, PAUSED_LINES, MID_LINES, DONE_LINES, BREAK_OVER_LINES, EARLY_LINES],
 };
 const SIMPLIFIED_CHINESE: Copy = Copy {
     study: "学习", break_label: "休息", studying: "学习中", start: "开始", pause: "暂停", restart: "重新计时",
@@ -43,6 +85,7 @@ const SIMPLIFIED_CHINESE: Copy = Copy {
     bubble_break_complete: "休息结束，你的 backlog 想你了。",
     bubble_ended_early: "这么快就走？积压任务可开心了。",
     today: "今日", sessions: "次", minutes: "分钟",
+    extra_lines: [NO_LINES; 6],
 };
 fn copy_for(locale: &str) -> &'static Copy {
     if locale == "zh-CN" { &SIMPLIFIED_CHINESE } else { &ENGLISH }
@@ -54,6 +97,10 @@ enum Phase { #[default] Study, Break }
 
 #[derive(Clone, Copy, Debug)]
 enum Notice { StudyComplete, BreakComplete, EndedEarly }
+
+// Which bubble to show. The order matches `Copy::extra_lines`.
+#[derive(Clone, Copy, Debug)]
+enum Line { Started, Paused, MidStudy, StudyComplete, BreakComplete, EndedEarly }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct StudySession {
@@ -91,6 +138,8 @@ struct Pomodoro {
     bubble: Option<String>,
     #[serde(skip)]
     bubble_remaining_ms: u64,
+    #[serde(skip)]
+    line_counts: [u32; 6],
 }
 const fn default_break_minutes() -> i64 { DEFAULT_BREAK_MINUTES }
 
@@ -101,7 +150,7 @@ impl Default for Pomodoro {
             minutes: DEFAULT_STUDY_MINUTES, break_minutes: DEFAULT_BREAK_MINUTES,
             phase: Phase::Study, focus_elapsed_ms: 0, session_day: None, sessions: Vec::new(),
             last_tick: None, locale: None, notice: None, model_events: Vec::new(),
-            bubble: None, bubble_remaining_ms: 0,
+            bubble: None, bubble_remaining_ms: 0, line_counts: [0; 6],
         }
     }
 }
@@ -120,6 +169,25 @@ impl Pomodoro {
     fn show_bubble(&mut self, message: &'static str) {
         self.bubble = Some(message.into());
         self.bubble_remaining_ms = 4_000;
+    }
+
+    // Shows the main line first, then cycles through the extra lines for that kind.
+    fn say(&mut self, line: Line) {
+        let copy = self.copy();
+        let slot = line as usize;
+        let main_line = match line {
+            Line::Started => copy.bubble_study_started,
+            Line::Paused => copy.bubble_paused,
+            Line::MidStudy => copy.bubble_mid_study,
+            Line::StudyComplete => copy.bubble_study_complete,
+            Line::BreakComplete => copy.bubble_break_complete,
+            Line::EndedEarly => copy.bubble_ended_early,
+        };
+        let extras = copy.extra_lines[slot];
+        let count = self.line_counts[slot];
+        self.line_counts[slot] = count.wrapping_add(1);
+        let pick = (count as usize) % (extras.len() + 1);
+        self.show_bubble(if pick == 0 { main_line } else { extras[pick - 1] });
     }
 
     fn configure(&mut self, config: &Configuration) -> Result<(), String> {
@@ -232,9 +300,9 @@ impl Pomodoro {
         self.running = true;
         self.started = true;
         self.notice = Some(Notice::StudyComplete);
-        self.show_bubble(self.copy().bubble_study_complete);
+        self.say(Line::StudyComplete);
         self.emit_stop_study_motion();
-        self.emit_break_motion();
+        self.emit_wave();
     }
     fn finish_break(&mut self) {
         self.phase = Phase::Study;
@@ -242,23 +310,8 @@ impl Pomodoro {
         self.running = false;
         self.started = false;
         self.notice = Some(Notice::BreakComplete);
-        self.show_bubble(self.copy().bubble_break_complete);
-        self.emit_stop_break_motion();
+        self.say(Line::BreakComplete);
         self.emit_wave();
-    }
-
-    fn emit_phase_motion(&mut self) {
-        match self.phase {
-            Phase::Study => self.emit_study_motion(),
-            Phase::Break => self.emit_break_motion(),
-        }
-    }
-
-    fn emit_stop_phase_motion(&mut self) {
-        match self.phase {
-            Phase::Study => self.emit_stop_study_motion(),
-            Phase::Break => self.emit_stop_break_motion(),
-        }
     }
 
     fn emit_study_motion(&mut self) {
@@ -272,21 +325,6 @@ impl Pomodoro {
     fn emit_stop_study_motion(&mut self) {
         self.model_events.push(PluginModelEvent::StopMotion {
             group: "Tukkiiie_Study".into(),
-            index: 0,
-        });
-    }
-
-    fn emit_break_motion(&mut self) {
-        self.model_events.push(PluginModelEvent::StartMotion {
-            group: "Tuki_Break".into(),
-            index: 0,
-            looping: true,
-        });
-    }
-
-    fn emit_stop_break_motion(&mut self) {
-        self.model_events.push(PluginModelEvent::StopMotion {
-            group: "Tuki_Break".into(),
             index: 0,
         });
     }
@@ -423,7 +461,7 @@ impl Plugin for Pomodoro {
                                 && self.remaining_ms <= self.study_ms() / 2
                                 && self.remaining_ms > 0
                             {
-                                self.show_bubble(self.copy().bubble_mid_study);
+                                self.say(Line::MidStudy);
                             }
                         }
                         if self.remaining_ms == 0 {
@@ -441,15 +479,13 @@ impl Plugin for Pomodoro {
                         self.session_day = Some(local_day_key());
                     }
                     self.running = !self.running;
-                    if self.running {
-                        self.emit_phase_motion();
-                        if !was_running && self.phase == Phase::Study {
-                            self.show_bubble(self.copy().bubble_study_started);
-                        }
-                    } else {
-                        self.emit_stop_phase_motion();
-                        if was_running && self.phase == Phase::Study {
-                            self.show_bubble(self.copy().bubble_paused);
+                    if self.phase == Phase::Study {
+                        if self.running {
+                            self.emit_study_motion();
+                            if !was_running { self.say(Line::Started); }
+                        } else {
+                            self.emit_stop_study_motion();
+                            if was_running { self.say(Line::Paused); }
                         }
                     }
                     self.started = true;
@@ -463,9 +499,9 @@ impl Plugin for Pomodoro {
                         self.session_day = Some(local_day_key());
                     }
                     self.running = true;
-                    self.emit_phase_motion();
                     if self.phase == Phase::Study {
-                        self.show_bubble(self.copy().bubble_study_started);
+                        self.emit_study_motion();
+                        self.say(Line::Started);
                     }
                     self.started = true;
                     self.last_tick = None;
@@ -478,9 +514,8 @@ impl Plugin for Pomodoro {
                     self.started = false;
                     self.last_tick = None;
                     self.notice = Some(Notice::EndedEarly);
-                    self.show_bubble(self.copy().bubble_ended_early);
+                    self.say(Line::EndedEarly);
                     self.emit_stop_study_motion();
-                    self.emit_wave();
                 }
                 "finish_early" => return Err("There is no active study time to record".into()),
                 _ => return Err("Unknown study timer action".into()),
@@ -488,29 +523,20 @@ impl Plugin for Pomodoro {
             HostMessage::Preview { .. } => return Err("Unknown study timer preview".into()),
             HostMessage::Locale { locale } => self.locale = Some(locale),
             HostMessage::Pause | HostMessage::Stop => {
-                if self.running {
-                    self.emit_stop_phase_motion();
+                if self.phase == Phase::Study && self.running {
+                    self.emit_stop_study_motion();
                 }
                 self.running = false;
                 self.last_tick = None;
             }
             HostMessage::Resume => {
                 self.running = self.remaining_ms > 0;
-                if self.running {
-                    self.emit_phase_motion();
+                if self.phase == Phase::Study && self.running {
+                    self.emit_study_motion();
                 }
                 self.last_tick = None;
             }
-            HostMessage::Reset => {
-                if self.running {
-                    self.emit_stop_phase_motion();
-                }
-                self.emit_wave();
-                let locale = self.locale.take();
-                let model_events = std::mem::take(&mut self.model_events);
-                *self = Self { locale, ..Default::default() };
-                self.model_events = model_events;
-            }
+            HostMessage::Reset => { *self = Self { locale: self.locale.take(), ..Default::default() }; }
             HostMessage::Handshake { .. } => return Err("Handshake belongs to SDK".into()),
         }
         self.output()
@@ -539,7 +565,7 @@ mod tests {
                 group: "Tukkiiie_Study".into(), index: 0,
             },
             PluginModelEvent::StartMotion {
-                group: "Tuki_Break".into(), index: 0, looping: true,
+                group: "CAT_motion".into(), index: 1, looping: false,
             },
         ]);
         assert_eq!(p.phase, Phase::Break);
@@ -556,14 +582,9 @@ mod tests {
         let mut p = Pomodoro { phase: Phase::Break, remaining_ms: 5 * 60_000, running: true,
             started: true, last_tick: Some(0), ..Default::default() };
         let output = tick(&mut p, 5 * 60_000);
-        assert_eq!(output.model_events, vec![
-            PluginModelEvent::StopMotion {
-                group: "Tuki_Break".into(), index: 0,
-            },
-            PluginModelEvent::StartMotion {
-                group: "CAT_motion".into(), index: 1, looping: false,
-            },
-        ]);
+        assert_eq!(output.model_events, vec![PluginModelEvent::StartMotion {
+            group: "CAT_motion".into(), index: 1, looping: false,
+        }]);
         assert_eq!(p.phase, Phase::Study);
         assert!(!output.model.nodes.iter().any(|node| matches!(node, UiNode::IconText { icon: StatusIcon::Rgba(_), .. })));
         assert!(!p.running);
@@ -597,31 +618,6 @@ mod tests {
             node, UiNode::IconText { icon: StatusIcon::Badge(_), .. }
         )));
         assert!(!p.running);
-    }
-
-    #[test]
-    fn break_start_pause_and_resume_drive_the_relaxed_tuki_pose() {
-        let mut p = Pomodoro {
-            phase: Phase::Break,
-            remaining_ms: 5 * 60_000,
-            started: true,
-            ..Default::default()
-        };
-
-        let start = action(&mut p, "toggle");
-        assert_eq!(start.model_events, vec![PluginModelEvent::StartMotion {
-            group: "Tuki_Break".into(), index: 0, looping: true,
-        }]);
-
-        let pause = action(&mut p, "toggle");
-        assert_eq!(pause.model_events, vec![PluginModelEvent::StopMotion {
-            group: "Tuki_Break".into(), index: 0,
-        }]);
-
-        let resume = action(&mut p, "toggle");
-        assert_eq!(resume.model_events, vec![PluginModelEvent::StartMotion {
-            group: "Tuki_Break".into(), index: 0, looping: true,
-        }]);
     }
 
     #[test]
