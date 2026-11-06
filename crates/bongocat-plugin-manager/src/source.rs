@@ -118,10 +118,18 @@ impl PluginSource {
                     {
                         return Err("local catalog and package disagree".into());
                     }
+                    let icon_url = if entry.icon_url.starts_with("https://") {
+                        entry.icon_url
+                    } else {
+                        Path::new(&entry.icon_url)
+                            .file_name()
+                            .map(|name| packages.join(name).to_string_lossy().into_owned())
+                            .unwrap_or(entry.icon_url)
+                    };
                     candidates.push(AvailablePlugin {
                         metadata: from_catalog(&entry, String::new(), catalog::sha256_of(&bytes))
                             .metadata,
-                        icon_url: entry.icon_url,
+                        icon_url,
                         digest: catalog::sha256_of(&bytes),
                         location: PackageLocation::Local(package),
                     });
