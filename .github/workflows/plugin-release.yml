@@ -88,6 +88,15 @@ jobs:
       - name: Install the target for the pinned toolchain
         run: rustup target add x86_64-pc-windows-msvc
       - uses: taiki-e/install-action@just
+      - name: Prepare required Windows Authenticode signing
+        shell: pwsh
+        env:
+          BONGOCAT_WINDOWS_SIGNING_THUMBPRINT: ${{ secrets.BONGOCAT_WINDOWS_SIGNING_THUMBPRINT }}
+          BONGOCAT_WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.BONGOCAT_WINDOWS_SIGNING_PFX_BASE64 }}
+          BONGOCAT_WINDOWS_SIGNING_PFX_PASSWORD: ${{ secrets.BONGOCAT_WINDOWS_SIGNING_PFX_PASSWORD }}
+          BONGOCAT_WINDOWS_SIGNTOOL: ${{ vars.BONGOCAT_WINDOWS_SIGNTOOL }}
+          BONGOCAT_WINDOWS_TIMESTAMP_URL: ${{ vars.BONGOCAT_WINDOWS_TIMESTAMP_URL }}
+        run: .\\tools\\prepare-windows-signing.ps1 -Required
       - run: just plugin-build x86_64-pc-windows-msvc
       - uses: actions/upload-artifact@v4
         with:
